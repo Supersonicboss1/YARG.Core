@@ -118,8 +118,9 @@ namespace YARG.Core.Engine.Vocals.Engines
                 else
                 {
                     // If star power can activate, there is no note to hit, and the player
-                    // hasn't sang in 0.25 seconds, then activate starpower.
-                    if (EngineParameters.SingToActivateStarPower &&
+                    // hasn't sang in 0.25 seconds, then activate starpower. If the player
+                    // is a bot, then also activate it.
+                    if ((EngineParameters.SingToActivateStarPower || IsBotUpdate) &&
                         GetNoteInPhraseAtSongTick(phrase, State.CurrentTick) is null &&
                         EngineStats.CanStarPowerActivate &&
                         State.CurrentTime - State.LastHitTime > 0.5)

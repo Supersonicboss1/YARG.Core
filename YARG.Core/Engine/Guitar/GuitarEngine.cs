@@ -176,7 +176,10 @@ namespace YARG.Core.Engine.Guitar
                 ActiveSustains.Add(sustain);
                 OnSustainStart?.Invoke(note);
             }
-
+            if (IsBotUpdate && EngineStats.CanStarPowerActivate)
+            {
+                ActivateStarPower();
+            }
             State.WasNoteGhosted = false;
 
             EventLogger.LogEvent(new NoteEngineEvent(State.CurrentTime)
@@ -360,7 +363,8 @@ namespace YARG.Core.Engine.Guitar
         {
             if (spSustainsActive)
             {
-                if (IsInputUpdate && CurrentInput.GetAction<GuitarAction>() == GuitarAction.Whammy)
+                // if the player is a bot, assume they are always whammying
+                if (IsInputUpdate && CurrentInput.GetAction<GuitarAction>() == GuitarAction.Whammy || IsBotUpdate)
                 {
                     // Rebase when beginning to SP whammy
                     if (!State.StarPowerWhammyTimer.IsActive(State.CurrentTime))
