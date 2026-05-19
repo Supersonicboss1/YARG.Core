@@ -18,7 +18,8 @@ namespace YARG.Core.Game
         NoDynamics    = 1 << 8,
         NoVocalPercussion = 1 << 9,
         RangeCompress = 1 << 10,
-        OpensToGreens = 1 << 11
+        OpensToGreens = 1 << 11,
+        AllWildcards = 1 << 12
     }
 
     public static class ModifierConflicts
@@ -34,7 +35,8 @@ namespace YARG.Core.Game
             Modifier.AllHopos    |
             Modifier.AllTaps     |
             Modifier.HoposToTaps |
-            Modifier.TapsToHopos,
+            Modifier.TapsToHopos |
+            Modifier.AllWildcards,
         };
 
         // Returns two modifier sets. The first set ("possible" modifiers) represents modifiers that should be
@@ -70,13 +72,15 @@ namespace YARG.Core.Game
                     Modifier.HoposToTaps   |
                     Modifier.TapsToHopos   |
                     Modifier.RangeCompress |
-                    Modifier.OpensToGreens,
+                    Modifier.OpensToGreens |
+                    Modifier.AllWildcards,
 
                 GameMode.FourLaneDrums or
                 GameMode.FiveLaneDrums or
                 GameMode.EliteDrums =>
                     Modifier.NoKicks    |
-                    Modifier.NoDynamics,
+                    Modifier.NoDynamics |
+                    Modifier.AllWildcards,
 
                 GameMode.Vocals =>
                     Modifier.UnpitchedOnly |
@@ -84,7 +88,8 @@ namespace YARG.Core.Game
 
                 GameMode.ProKeys =>
                     Modifier.RangeCompress |
-                    Modifier.OpensToGreens,
+                    Modifier.OpensToGreens |
+                    Modifier.AllWildcards,
 
                 GameMode.SixFretGuitar or
                 GameMode.ProGuitar     or

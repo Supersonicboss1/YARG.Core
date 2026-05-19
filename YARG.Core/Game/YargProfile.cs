@@ -331,15 +331,20 @@ namespace YARG.Core.Game
                     }
                     else if (IsModifierActive(Modifier.HoposToTaps))
                     {
-                        guitarTrack.ConvertFromTypeToType(GuitarNoteType.Hopo, GuitarNoteType.Tap);
+                        guitarTrack.ConvertFromGuitarTypeToGuitarType(GuitarNoteType.Hopo, GuitarNoteType.Tap);
                     }
                     else if (IsModifierActive(Modifier.TapsToHopos))
                     {
-                        guitarTrack.ConvertFromTypeToType(GuitarNoteType.Tap, GuitarNoteType.Hopo);
+                        guitarTrack.ConvertFromGuitarTypeToGuitarType(GuitarNoteType.Tap, GuitarNoteType.Hopo);
                     }
                     else if (IsModifierActive(Modifier.RangeCompress))
                     {
                         guitarTrack.CompressGuitarRange();
+                    }
+                    else if  (IsModifierActive(Modifier.AllWildcards))
+                    {
+                        guitarTrack.ConvertToGuitarType(GuitarNoteType.Strum);
+                        guitarTrack.ConvertAllToFret(syncTrack, FiveFretGuitarFret.Wildcard);
                     }
 
                     break;
@@ -351,15 +356,23 @@ namespace YARG.Core.Game
                         throw new InvalidOperationException("Cannot apply drum modifiers to non-drums track " +
                             $"with notes of {typeof(TNote)}!");
                     }
-
-                    if (IsModifierActive(Modifier.NoKicks))
+                    if (IsModifierActive(Modifier.AllWildcards))
                     {
-                        drumsTrack.RemoveKickDrumNotes();
+                        // This is fine because all drums game modes have wildcard as the same value,
+                        // However, do not do this if the values do not align.
+                        drumsTrack.ConvertAllToPad(FourLaneDrumPad.Wildcard);
                     }
-
-                    if (IsModifierActive(Modifier.NoDynamics))
+                    else
                     {
-                        drumsTrack.RemoveDynamics();
+                        if (IsModifierActive(Modifier.NoKicks))
+                        {
+                            drumsTrack.RemoveKickDrumNotes();
+                        }
+
+                        if (IsModifierActive(Modifier.NoDynamics))
+                        {
+                            drumsTrack.ConvertToDrumType(DrumNoteType.Neutral);
+                        }
                     }
 
                     break;
@@ -380,6 +393,10 @@ namespace YARG.Core.Game
                         if (IsModifierActive(Modifier.OpensToGreens))
                         {
                             fiveLaneKeysTrack.ConvertFromOpenToGreen(syncTrack);
+                        }
+                        else if (IsModifierActive(Modifier.AllWildcards))
+                        {
+                            fiveLaneKeysTrack.ConvertAllToFret(syncTrack, FiveFretGuitarFret.Wildcard);
                         }
                         break;
                     }

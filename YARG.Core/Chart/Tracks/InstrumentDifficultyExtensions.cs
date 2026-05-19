@@ -19,7 +19,7 @@ namespace YARG.Core.Chart
             }
         }
 
-        public static void ConvertFromTypeToType(this InstrumentDifficulty<GuitarNote> difficulty,
+        public static void ConvertFromGuitarTypeToGuitarType(this InstrumentDifficulty<GuitarNote> difficulty,
             GuitarNoteType from, GuitarNoteType to)
         {
             foreach (var note in difficulty.Notes)
@@ -35,6 +35,48 @@ namespace YARG.Core.Chart
                     child.Type = to;
                 }
             }
+        }
+
+        public static void ConvertAllToFret(this InstrumentDifficulty<GuitarNote> difficulty, SyncTrack syncTrack, FiveFretGuitarFret fret)
+        {
+            GuitarNote? lastNoteSustain = null;
+            uint sixteenthTickLength = syncTrack.Resolution / 4;
+            for (int i = 0; i < difficulty.Notes.Count; i++)
+            {
+                var note = difficulty.Notes[i].CloneWithoutChildNotes();
+                difficulty.Notes[i] = note;
+                note.Fret = (int) fret;
+                note.GuitarFlags = GuitarNoteFlags.None;
+                note.NoteMask = 1 << (fret.Convert() - 1);
+
+                // Cut off the last sustain a 16th tick before the next note
+                if (lastNoteSustain != null)
+                {
+                    if (lastNoteSustain.TickEnd > note.Tick)
+                    {
+                        if (note.Tick - lastNoteSustain.Tick <= sixteenthTickLength)
+                        {
+                            lastNoteSustain.TickLength = 0;
+                            lastNoteSustain.TimeLength = 0;
+                        }
+                        else
+                        {
+                            lastNoteSustain.TickLength = note.Tick - sixteenthTickLength - lastNoteSustain.Tick;
+                            lastNoteSustain.TimeLength =
+                                syncTrack.TickToTime(note.Tick - sixteenthTickLength) - lastNoteSustain.Time;
+                        }
+                    }
+                }
+                if (note.IsSustain)
+                {
+                    lastNoteSustain = note;
+                }
+                else
+                {
+                    lastNoteSustain = null;
+                }
+            }
+            difficulty.RangeShiftEvents.Clear();
         }
 
         public static void ConvertFromOpenToGreen(this InstrumentDifficulty<GuitarNote> difficulty, SyncTrack syncTrack)
@@ -341,6 +383,19 @@ namespace YARG.Core.Chart
             shifts.RemoveRange(1, shifts.Count - 1);
         }
 
+        private static void ConvertAllToPad(this InstrumentDifficulty<DrumNote> difficulty, int pad)
+        {
+            for (int i = 0; i < difficulty.Notes.Count; i++)
+            {
+                var note = difficulty.Notes[i].CloneWithoutChildNotes();
+                difficulty.Notes[i] = note;
+                note.Pad = pad;
+            }
+        }
+
+        public static void ConvertAllToPad(this InstrumentDifficulty<DrumNote> difficulty, FourLaneDrumPad pad) => difficulty.ConvertAllToPad((int) pad);
+        public static void ConvertAllToPad(this InstrumentDifficulty<DrumNote> difficulty, FiveLaneDrumPad pad) => difficulty.ConvertAllToPad((int) pad);
+
         public static void RemoveKickDrumNotes(this InstrumentDifficulty<DrumNote> difficulty)
         {
             var kickDrumPadIndex = difficulty.Instrument switch
@@ -571,18 +626,15 @@ namespace YARG.Core.Chart
                     }
                 }
             }
-
-            // return difficulty;
         }
 
-
-        public static void RemoveDynamics(this InstrumentDifficulty<DrumNote> difficulty)
+        public static void ConvertToDrumType(this InstrumentDifficulty<DrumNote> difficulty, DrumNoteType drumNoteType)
         {
             foreach (var i in difficulty.Notes)
             {
                 foreach (var note in i.AllNotes)
                 {
-                    note.Type = DrumNoteType.Neutral;
+                    note.Type = drumNoteType;
                 }
             }
         }

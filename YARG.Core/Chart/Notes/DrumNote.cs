@@ -7,7 +7,7 @@ namespace YARG.Core.Chart
         private DrumNoteFlags _drumFlags;
         public DrumNoteFlags DrumFlags;
 
-        public int Pad { get; }
+        public int Pad { get; set; }
 
         public bool IsDoubleKick { get; }
 
