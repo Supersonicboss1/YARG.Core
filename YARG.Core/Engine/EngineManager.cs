@@ -12,6 +12,7 @@ namespace YARG.Core.Engine
         private int                      _nextEngineIndex;
         List <EngineContainer>           _allEngines     = new();
         public List<EngineContainer> Engines => _allEngines;
+        public bool BandFeaturesEnabled { get; set; }
 
         private SongChart?               _chart;
 
