@@ -12,7 +12,7 @@ namespace YARG.Core.Game
 {
     public partial class YargProfile
     {
-        private readonly int PROFILE_VERSION = 8;
+        private readonly int PROFILE_VERSION = 9;
 
         public int Version;
 
@@ -40,6 +40,8 @@ namespace YARG.Core.Game
         public DrumsHighwayItem[] FiveLaneDrumsHighwayOrdering;
 
         public bool UseCymbalModels;
+
+        public int DrumsVelocityThreshold;
 
         public OpenLaneDisplayType OpenLaneDisplayType;
 
@@ -144,6 +146,8 @@ namespace YARG.Core.Game
             RockMeterPreset = Game.RockMeterPreset.Normal.Id;
 
             CurrentModifiers = Modifier.None;
+
+            DrumsVelocityThreshold = 64;
         }
 
         public YargProfile(Guid id) : this()
@@ -276,6 +280,11 @@ namespace YARG.Core.Game
                 {
                     FiveLaneDrumsHighwayOrdering[i] = (DrumsHighwayItem) stream.ReadByte();
                 }
+            }
+
+            if (Version >= 9)
+            {
+                DrumsVelocityThreshold = stream.Read<int>(Endianness.Little);
             }
         }
 
@@ -491,6 +500,8 @@ namespace YARG.Core.Game
             {
                 writer.Write((byte) item);
             }
+
+            writer.Write(DrumsVelocityThreshold);
         }
 
         private static DrumsHighwayItem[] DEFAULT_FOUR_LANE_ORDERING = new DrumsHighwayItem[] {

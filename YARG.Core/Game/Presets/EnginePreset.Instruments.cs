@@ -194,9 +194,10 @@ namespace YARG.Core.Game
                 };
             }
 
-            public DrumsEngineParameters Create(float[] starMultiplierThresholds, float[] soloBonusStarMultiplierThresholds, DrumsEngineParameters.DrumMode mode)
+            public DrumsEngineParameters Create(float[] starMultiplierThresholds, float[] soloBonusStarMultiplierThresholds, DrumsEngineParameters.DrumMode mode, int velocityThreshold)
             {
                 var hitWindow = HitWindow.Create();
+                float velocityThresholdRatio =  (float) velocityThreshold / 128;
                 return new DrumsEngineParameters(
                     hitWindow,
                     DEFAULT_MAX_MULTIPLIER,
@@ -204,7 +205,8 @@ namespace YARG.Core.Game
                     soloBonusStarMultiplierThresholds,
                     mode,
                     NoStarPowerOverlap,
-                    EnableLanes);
+                    EnableLanes,
+                    velocityThresholdRatio);
             }
         }
 

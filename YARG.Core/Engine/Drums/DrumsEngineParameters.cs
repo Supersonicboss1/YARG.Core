@@ -29,11 +29,11 @@ namespace YARG.Core.Engine.Drums
         public readonly bool NoStarPowerOverlap;
 
         public DrumsEngineParameters(HitWindowSettings hitWindow, int maxMultiplier, float[] starMultiplierThresholds, float[] soloBonusStarMultiplierThresholds,
-            DrumMode mode, bool noStarPowerOverlap, bool enableLanes)
+            DrumMode mode, bool noStarPowerOverlap, bool enableLanes, float velocityThreshold)
             : base(hitWindow, maxMultiplier, 0, 0, starMultiplierThresholds, soloBonusStarMultiplierThresholds, enableLanes)
         {
             Mode = mode;
-            VelocityThreshold = 0.35f;
+            VelocityThreshold = velocityThreshold;
             SituationalVelocityWindow = 1.5f;
             NoStarPowerOverlap = noStarPowerOverlap;
         }
