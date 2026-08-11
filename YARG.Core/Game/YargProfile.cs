@@ -393,6 +393,10 @@ namespace YARG.Core.Game
                     {
                         guitarTrack.ConvertFromOpenToGreen(syncTrack);
                     }
+                    if (IsModifierActive(Modifier.DoubleNotes))
+                    {
+                        guitarTrack.DoubleNotes(syncTrack);
+                    }
                     if (IsModifierActive(Modifier.AllStrums))
                     {
                         guitarTrack.ConvertToGuitarType(GuitarNoteType.Strum);
