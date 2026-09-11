@@ -50,6 +50,15 @@ namespace YARG.Core.Chart
             NoteMask |= GetKeyMask(note.Key);
         }
 
+        public override void RemoveChildNote(ProKeysNote note)
+        {
+            if ((NoteMask & GetKeyMask(note.Key)) == 0) return;
+
+            base.RemoveChildNote(note);
+
+            NoteMask &= ~GetKeyMask(note.Key);
+        }
+
         public override void ResetNoteState()
         {
             base.ResetNoteState();

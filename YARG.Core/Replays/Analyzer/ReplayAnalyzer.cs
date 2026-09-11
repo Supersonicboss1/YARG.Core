@@ -233,7 +233,7 @@ namespace YARG.Core.Replays.Analyzer
                 {
                     var notes = _chart.GetFiveFretTrack(frame.Profile.CurrentInstrument)
                         .GetDifficulty(frame.Profile.CurrentDifficulty).Clone();
-                    profile.ApplyModifiers(notes, _chart.SyncTrack);
+                    profile.ApplyModifiers(_replayInfo.SongChecksum, notes, _chart.SyncTrack);
                     // TODO: Implement support for custom RockMeterPresets in replays
                     manager.Register((GuitarEngine)engine, notes, _chart, rockMeterPreset);
                     break;
@@ -243,7 +243,7 @@ namespace YARG.Core.Replays.Analyzer
                     // Must match gameplay note selection (GetSixFretPlayableDifficulty) or replays fail verification
                     var notes = _chart.GetSixFretPlayableDifficulty(frame.Profile.CurrentInstrument,
                         frame.Profile.CurrentDifficulty, frame.Profile.LeftyFlip).Clone();
-                    profile.ApplyModifiers(notes, _chart.SyncTrack);
+                    profile.ApplyModifiers(_replayInfo.SongChecksum, notes, _chart.SyncTrack);
                     manager.Register((GuitarEngine)engine, notes, _chart, rockMeterPreset);
                     break;
                 }
@@ -253,7 +253,7 @@ namespace YARG.Core.Replays.Analyzer
                 {
                     var notes = _chart.GetDrumsTrack(profile.CurrentInstrument)
                         .GetDifficulty(profile.CurrentDifficulty).Clone();
-                    profile.ApplyModifiers(notes, _chart.SyncTrack);
+                    profile.ApplyModifiers(_replayInfo.SongChecksum, notes, _chart.SyncTrack);
                     // TODO: Implement support for custom RockMeterPresets in replays
                     manager.Register((DrumsEngine)engine, notes, _chart, rockMeterPreset);
                     break;
@@ -264,7 +264,7 @@ namespace YARG.Core.Replays.Analyzer
                     {
                         // Reset the notes
                         var notes = _chart.ProKeys.GetDifficulty(profile.CurrentDifficulty).Clone();
-                        profile.ApplyModifiers(notes, _chart.SyncTrack);
+                        profile.ApplyModifiers(_replayInfo.SongChecksum, notes, _chart.SyncTrack);
                         // TODO: Implement support for custom RockMeterPresets in replays
                         manager.Register((ProKeysEngine)engine, notes, _chart, rockMeterPreset);
                         break;
@@ -273,7 +273,7 @@ namespace YARG.Core.Replays.Analyzer
                     // Five-Lane Keys
                     var fiveLaneNotes = _chart.GetFiveFretTrack(profile.CurrentInstrument)
                         .GetDifficulty(profile.CurrentDifficulty).Clone();
-                    profile.ApplyModifiers(fiveLaneNotes, _chart.SyncTrack);
+                    profile.ApplyModifiers(_replayInfo.SongChecksum, fiveLaneNotes, _chart.SyncTrack);
                     manager.Register((FiveLaneKeysEngine)engine, fiveLaneNotes, _chart, rockMeterPreset);
                     break;
                 }
@@ -300,7 +300,7 @@ namespace YARG.Core.Replays.Analyzer
                     // Reset the notes
                     var notes = _chart.GetFiveFretTrack(profile.CurrentInstrument)
                         .GetDifficulty(profile.CurrentDifficulty).Clone();
-                    profile.ApplyModifiers(notes, _chart.SyncTrack);
+                    profile.ApplyModifiers(_replayInfo.SongChecksum, notes, _chart.SyncTrack);
                     foreach (var note in notes.Notes)
                     {
                         foreach (var subNote in note.AllNotes)
@@ -321,7 +321,7 @@ namespace YARG.Core.Replays.Analyzer
                     // Must match gameplay note selection (GetSixFretPlayableDifficulty) or replays fail verification
                     var notes = _chart.GetSixFretPlayableDifficulty(profile.CurrentInstrument,
                         profile.CurrentDifficulty, profile.LeftyFlip).Clone();
-                    profile.ApplyModifiers(notes, _chart.SyncTrack);
+                    profile.ApplyModifiers(_replayInfo.SongChecksum, notes, _chart.SyncTrack);
                     foreach (var note in notes.Notes)
                     {
                         foreach (var subNote in note.AllNotes)
@@ -344,7 +344,7 @@ namespace YARG.Core.Replays.Analyzer
                     var notes = _chart.GetDrumsTrack(profile.CurrentInstrument)
                         .GetDifficulty(profile.CurrentDifficulty).Clone();
                     notes.SetDrumActivationFlags(profile.StarPowerActivationType);
-                    profile.ApplyModifiers(notes, _chart.SyncTrack);
+                    profile.ApplyModifiers(_replayInfo.SongChecksum, notes, _chart.SyncTrack);
                     foreach (var note in notes.Notes)
                     {
                         foreach (var subNote in note.AllNotes)
@@ -367,7 +367,7 @@ namespace YARG.Core.Replays.Analyzer
                     {
                         // Reset the notes
                         var proNotes = _chart.ProKeys.GetDifficulty(profile.CurrentDifficulty).Clone();
-                        profile.ApplyModifiers(proNotes, _chart.SyncTrack);
+                        profile.ApplyModifiers(_replayInfo.SongChecksum, proNotes, _chart.SyncTrack);
                         foreach (var note in proNotes.Notes)
                         {
                             foreach (var subNote in note.AllNotes)
@@ -388,7 +388,7 @@ namespace YARG.Core.Replays.Analyzer
                     // Reset the notes
                     var fiveLaneNotes = _chart.GetFiveFretTrack(profile.CurrentInstrument)
                         .GetDifficulty(profile.CurrentDifficulty).Clone();
-                    profile.ApplyModifiers(fiveLaneNotes, _chart.SyncTrack);
+                    profile.ApplyModifiers(_replayInfo.SongChecksum, fiveLaneNotes, _chart.SyncTrack);
                     foreach (var note in fiveLaneNotes.Notes)
                     {
                         foreach (var subNote in note.AllNotes)

@@ -70,7 +70,9 @@ namespace YARG.Core.Game
                     Modifier.HoposToTaps   |
                     Modifier.TapsToHopos   |
                     Modifier.RangeCompress |
-                    Modifier.OpensToGreens,
+                    Modifier.OpensToGreens |
+                    Modifier.NoteShuffle,
+
 
                 GameMode.SixFretGuitar =>
                     Modifier.AllStrums     |

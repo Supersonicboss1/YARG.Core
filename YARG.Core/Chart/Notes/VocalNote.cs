@@ -225,6 +225,31 @@ namespace YARG.Core.Chart
             }
         }
 
+        public override void RemoveChildNote(VocalNote note)
+        {
+            if (!_childNotes.Remove(note))
+            {
+                return;
+            }
+
+            if (IsLyricPhrase)
+            {
+                return;
+            }
+
+            // Track total length
+            if (_childNotes.Count > 0)
+            {
+                TotalTimeLength = _childNotes[^1].TimeEnd - Time;
+                TotalTickLength = _childNotes[^1].TickEnd - Tick;
+            }
+            else
+            {
+                TotalTimeLength = TimeLength;
+                TotalTickLength = TickLength;
+            }
+        }
+
         protected override void CopyFlags(VocalNote other)
         {
             Type = other.Type;

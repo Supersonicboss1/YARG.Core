@@ -151,6 +151,17 @@ namespace YARG.Core.Chart
             _childNotes.Add(note);
         }
 
+        public virtual void RemoveChildNote(TNote note)
+        {
+            if (note.Parent != this)
+            {
+                throw new InvalidOperationException("Child note being removed is not a child of this note!");
+            }
+
+            note.Parent = null;
+            _childNotes.Remove(note);
+        }
+
         public void SetHitState(bool hit, bool includeChildren)
         {
             WasHit = hit;

@@ -8,6 +8,7 @@ using YARG.Core.Extensions;
 using System.Linq;
 using System.Runtime.Serialization;
 using YARG.Core.IO;
+using YARG.Core.Song;
 
 namespace YARG.Core.Game
 {
@@ -378,7 +379,7 @@ namespace YARG.Core.Game
             CurrentModifiers = _savedModifiers;
         }
 
-        public void ApplyModifiers<TNote>(InstrumentDifficulty<TNote> track, SyncTrack syncTrack) where TNote : Note<TNote>
+        public void ApplyModifiers<TNote>(HashWrapper songHash, InstrumentDifficulty<TNote> track, SyncTrack syncTrack) where TNote : Note<TNote>
         {
             switch (GameMode)
             {
@@ -417,6 +418,11 @@ namespace YARG.Core.Game
                     else if (IsModifierActive(Modifier.RangeCompress))
                     {
                         guitarTrack.CompressGuitarRange();
+                    }
+
+                    if (IsModifierActive(Modifier.NoteShuffle))
+                    {
+                        guitarTrack.ShuffleNotes(unchecked(songHash.GetHashCode() * 133769420)); // heh
                     }
 
                     break;

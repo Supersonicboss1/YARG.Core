@@ -93,6 +93,15 @@ namespace YARG.Core.Chart
             NoteMask |= GetNoteMask(note.Fret);
         }
 
+        public override void RemoveChildNote(GuitarNote note)
+        {
+            if ((NoteMask & GetNoteMask(note.Fret)) == 0) return;
+
+            base.RemoveChildNote(note);
+
+            NoteMask &= ~GetNoteMask(note.Fret);
+        }
+
         public override void ResetNoteState()
         {
             base.ResetNoteState();

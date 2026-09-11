@@ -62,9 +62,15 @@ namespace YARG.Core.Chart
         {
             if ((_padMask & (1 << note.Pad)) != 0) return;
 
-            _padMask |= note.Pad;
+            _padMask |= 1 << note.Pad;
 
             base.AddChildNote(note);
+        }
+
+        public override void RemoveChildNote(EliteDrumNote note)
+        {
+            _padMask &= ~(1 << note.Pad);
+            base.RemoveChildNote(note);
         }
 
         public override void ResetNoteState()

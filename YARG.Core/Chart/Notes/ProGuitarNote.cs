@@ -56,6 +56,11 @@ namespace YARG.Core.Chart
             base.AddChildNote(note);
         }
 
+        public override void RemoveChildNote(ProGuitarNote note)
+        {
+            base.RemoveChildNote(note);
+        }
+
         public override void ResetNoteState()
         {
             base.ResetNoteState();

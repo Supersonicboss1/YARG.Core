@@ -52,6 +52,17 @@ namespace YARG.Core.Extensions
         }
 
         /// <summary>
+        /// Picks and removes a random value from the list using the given random number generator.
+        /// </summary>
+        public static T PopRandom<T>(this List<T> list, Random random)
+        {
+            int index = random.Next(0, list.Count);
+            var value = list[index];
+            list.RemoveAt(index);
+            return value;
+        }
+
+        /// <summary>
         /// Searches for an item in the sorted list, using the given target value and comparer function.
         /// </summary>
         /// <returns>

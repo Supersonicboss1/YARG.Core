@@ -79,6 +79,12 @@ namespace YARG.Core.Chart
             base.AddChildNote(note);
         }
 
+        public override void RemoveChildNote(DrumNote note)
+        {
+            _padMask &= ~(1 << note.Pad);
+            base.RemoveChildNote(note);
+        }
+
         public override void ResetNoteState()
         {
             base.ResetNoteState();
