@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using YARG.Core.Chart;
 using YARG.Core.Input;
 using YARG.Core.Logging;
@@ -8,11 +7,10 @@ namespace YARG.Core.Engine.Guitar.Engines
 {
     public class YargFiveFretGuitarEngine : GuitarEngine
     {
-        // Special value used to trigger BRE animations for open notes, since most BRE animation is
-        // driven by GuitarActions, which don't include an explicit "open strum" value
-        public const int OPEN_BRE_INPUT = int.MaxValue;
 
         protected override int WildcardMask => 1 << ((int)FiveFretGuitarFret.Wildcard - 1);
+
+        protected override int CodaScoringZoneCount => 5;
 
         public YargFiveFretGuitarEngine(InstrumentDifficulty<GuitarNote> chart, SyncTrack syncTrack,
             GuitarEngineParameters engineParameters, bool isBot)
@@ -289,7 +287,7 @@ namespace YARG.Core.Engine.Guitar.Engines
                 // Defines whether solo tapping is allowed
                 // Only if SoloTaps engine parameter is set, solo is active, and no non-solo buttons are pressed
                 // Also allow tap if the note is a solo start note, since IsSoloActive isn't set until after this point
-                bool SoloTapAllowed = EngineParameters.SoloTaps && (IsSoloActive || note.IsSoloStart) && !StandardButtonHeld;
+                bool soloTapAllowed = EngineParameters.SoloTaps && (IsSoloActive || note.IsSoloStart) && !StandardButtonHeld;
 
                 // Handles hitting a hopo notes
                 // If first note is a hopo then it can be hit without combo (for practice mode)
@@ -298,7 +296,7 @@ namespace YARG.Core.Engine.Guitar.Engines
 
                 // If a note is a tap then it can be hit only if it is the closest note, unless
                 // the combo is 0 then it can be hit regardless of the distance (note skipping)
-                bool tapCondition = (note.IsTap || SoloTapAllowed) && (isFirstNoteInWindow || EngineStats.Combo == 0);
+                bool tapCondition = (note.IsTap || soloTapAllowed) && (isFirstNoteInWindow || EngineStats.Combo == 0);
 
                 bool frontEndIsExpired = note.Time > FrontEndExpireTime;
                 bool canUseInfFrontEnd =
@@ -467,9 +465,9 @@ namespace YARG.Core.Engine.Guitar.Engines
         {
             // Defines whether solo tapping is allowed
             // Only if SoloTaps engine parameter is set, solo is active, and no non-solo buttons are pressed
-            bool SoloTapAllowed = EngineParameters.SoloTaps && (IsSoloActive || note.IsSoloStart) && !StandardButtonHeld;
+            bool soloTapAllowed = EngineParameters.SoloTaps && (IsSoloActive || note.IsSoloStart) && !StandardButtonHeld;
 
-            if (note.IsHopo || note.IsTap || SoloTapAllowed)
+            if (note.IsHopo || note.IsTap || soloTapAllowed)
             {
                 HasTapped = false;
                 StartTimer(ref HopoLeniencyTimer, CurrentTime);
@@ -575,76 +573,6 @@ namespace YARG.Core.Engine.Guitar.Engines
             return GetMostSignificantBit(anchorButtons) < GetMostSignificantBit(targetFretValue);
         }
 
-        private void HandleCodaFretChange(double time)
-        {
-            // We shouldn't be called if a coda isn't active, but let's check just in case
-            if (!IsCodaActive)
-            {
-                return;
-            }
-
-            var coda = Codas[CurrentCodaIndex];
-
-            // This creates a button mask for each fret, indexed by fret number
-            byte[] fretMask = CreateCodaFretMask();
-            byte changed = (byte) 0;
-            byte pressed = (byte) 0;
-
-            for (int i = 0; i < fretMask.Length; i++)
-            {
-                fretMask[i] = (byte) (1 << i);
-            }
-
-            // If there was a strum, hit held frets
-            if (HasStrummed && !IsBot)
-            {
-                pressed = EffectiveButtonMask;
-            }
-            else if (IsBot || !StandardButtonHeld)
-            {
-                // If there was a fret press this update, we have to tell the CodaSection about it
-                if (IsFretPress)
-                {
-                    // Figure out which button was pressed
-                    changed = (byte) (EffectiveButtonMask ^ LastButtonMask);
-                    pressed = (byte) (changed & EffectiveButtonMask);
-                }
-            }
-
-            if (pressed == OPEN_MASK)
-            {
-                coda.HitLane(time, OPEN_BRE_INPUT);
-            }
-            else
-            {
-                // Hit the corresponding coda lanes
-                for (int i = 0; i < fretMask.Length; i++)
-                {
-                    if ((fretMask[i] & pressed) > 0)
-                    {
-                        coda.HitLane(time, i);
-                    }
-                }
-            }
-        }
-
-        protected override List<CodaSection> GetCodaSections()
-        {
-            var codaSections = new List<CodaSection>();
-
-            foreach (var phrase in Chart.Phrases)
-            {
-                if (phrase.Type != PhraseType.BigRockEnding)
-                {
-                    continue;
-                }
-
-                codaSections.Add(new CodaSection(GetCodaFretCount(), phrase.Time, phrase.TimeEnd));
-            }
-
-            return codaSections;
-        }
-
         protected virtual int GetChordLowestFretMask(GuitarNote note)
         {
             var chordMask = 0;
@@ -661,10 +589,6 @@ namespace YARG.Core.Engine.Guitar.Engines
 
             return chordMask;
         }
-
-        protected virtual byte[] CreateCodaFretMask() => new byte[5];
-
-        protected virtual int GetCodaFretCount() => 5;
 
         protected bool IsGhostInTrillLeniencyWindow(int inputNote)
         {

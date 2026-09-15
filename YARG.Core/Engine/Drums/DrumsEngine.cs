@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using YARG.Core.Chart;
 using YARG.Core.Input;
 using YARG.Core.Logging;
@@ -9,6 +8,9 @@ namespace YARG.Core.Engine.Drums
     public abstract class DrumsEngine : BaseEngine<DrumNote, DrumsEngineParameters,
         DrumsStats>
     {
+        // Drums uses one big scoring zone for all pads
+        protected override int CodaScoringZoneCount => 1;
+
         public delegate void OverhitEvent();
 
         public delegate void PadHitEvent(DrumsAction action, bool noteWasHit, bool wereBonusPointsAwarded, bool wasOverhitInLane, DrumNoteType type, float velocity);
@@ -121,7 +123,7 @@ namespace YARG.Core.Engine.Drums
             {
                 // Do not count this as an overhit if the last pad hit was part of an active lane
                 return;
-            }            
+            }
 
             // Prevent overhit too close to a lane that accepts the overhit
             if (PadHit.HasValue && IsInLaneLeniencyWindow((int)PadHit))
@@ -490,21 +492,6 @@ namespace YARG.Core.Engine.Drums
 
             YargLogger.LogDebug($"[Drums] Base score: {baseScore}, Max Combo: {combo}");
             return ((int) Math.Round(baseScore), (int) Math.Round(noteScore));
-        }
-
-        protected override List<CodaSection> GetCodaSections()
-        {
-            var codaSections = new List<CodaSection>();
-
-            foreach (var phrase in Chart.Phrases)
-            {
-                if (phrase.Type == PhraseType.BigRockEnding)
-                {
-                    codaSections.Add(new CodaSection(1, phrase.Time, phrase.TimeEnd));
-                }
-            }
-
-            return codaSections;
         }
 
         protected static bool IsTomInput(GameInput input)

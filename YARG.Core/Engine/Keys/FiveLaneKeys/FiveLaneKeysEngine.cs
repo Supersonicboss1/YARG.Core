@@ -10,6 +10,10 @@ namespace YARG.Core.Engine.Keys
     {
         protected override int WildcardMask => 1 << (int) FiveLaneKeysAction.Wildcard;
 
+        // 5 normal lanes, plus the open lane
+        // TODO: This may need to be overridden in YargFiveLaneKeysEngine instead, depending on how 6L keys is designed
+        protected override int CodaScoringZoneCount => 6;
+
         public enum FiveLaneKeysAction {
             GreenKey = 0,
             RedKey = 1,

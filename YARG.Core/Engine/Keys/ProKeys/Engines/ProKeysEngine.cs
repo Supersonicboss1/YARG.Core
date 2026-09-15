@@ -9,6 +9,9 @@ namespace YARG.Core.Engine.Keys
     {
         protected const int POINTS_PER_PRO_KEYS_NOTE = 120;
 
+        // We probably only need 3, but the engine can't know about range shifts, so we need to allocate the max.
+        protected override int CodaScoringZoneCount => 4;
+
         protected EngineTimer FatFingerTimer;
         protected ProKeysNote? FatFingerNote;
         protected int? FatFingerKey;

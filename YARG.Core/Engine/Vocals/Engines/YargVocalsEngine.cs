@@ -15,6 +15,8 @@ namespace YARG.Core.Engine.Vocals.Engines
         {
         }
 
+        protected override int CodaScoringZoneCount => 0; // Vocals don't score in codas at all
+
         protected override void UpdateBot(double songTime)
         {
             if (!IsBot)

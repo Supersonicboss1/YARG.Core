@@ -12,6 +12,8 @@ namespace YARG.Core.Engine
         protected const int POINTS_PER_PRO_NOTE = POINTS_PER_NOTE + 10;
         protected const int POINTS_PER_BEAT     = 25;
 
+        protected abstract int CodaScoringZoneCount { get; }
+
         // Max number of measures that SP will last when draining
         // SP draining is done based on measures
         protected const int STAR_POWER_MAX_MEASURES = 8;

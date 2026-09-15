@@ -14,6 +14,10 @@ namespace YARG.Core.Engine.Guitar
 
         public const byte OPEN_MASK = 64;
 
+        // Special value used to trigger BRE animations for open notes, since most BRE animation is
+        // driven by GuitarActions, which don't include an explicit "open strum" value
+        public const int OPEN_BRE_INPUT = int.MaxValue;
+
         public delegate void OverstrumEvent();
 
         public OverstrumEvent? OnOverstrum;
@@ -441,6 +445,59 @@ namespace YARG.Core.Engine.Guitar
 
             YargLogger.LogDebug($"[Guitar] Base score: {baseScore}, Max Combo: {combo}");
             return ((int) Math.Round(baseScore), (int) Math.Round(noteScore));
+        }
+
+        protected void HandleCodaFretChange(double time)
+        {
+            // We shouldn't be called if a coda isn't active, but let's check just in case
+            if (!IsCodaActive)
+            {
+                return;
+            }
+
+            var coda = Codas[CurrentCodaIndex];
+
+            // This creates a button mask for each fret, indexed by fret number
+            byte[] fretMask = new byte[CodaScoringZoneCount];
+            byte changed = (byte) 0;
+            byte pressed = (byte) 0;
+
+            for (int i = 0; i < fretMask.Length; i++)
+            {
+                fretMask[i] = (byte) (1 << i);
+            }
+
+            // If there was a strum, hit held frets
+            if (HasStrummed && !IsBot)
+            {
+                pressed = EffectiveButtonMask;
+            }
+            else if (IsBot || !StandardButtonHeld)
+            {
+                // If there was a fret press this update, we have to tell the CodaSection about it
+                if (IsFretPress)
+                {
+                    // Figure out which button was pressed
+                    changed = (byte) (EffectiveButtonMask ^ LastButtonMask);
+                    pressed = (byte) (changed & EffectiveButtonMask);
+                }
+            }
+
+            if (pressed == OPEN_MASK)
+            {
+                coda.HitLane(time, OPEN_BRE_INPUT);
+            }
+            else
+            {
+                // Hit the corresponding coda lanes
+                for (int i = 0; i < fretMask.Length; i++)
+                {
+                    if ((fretMask[i] & pressed) > 0)
+                    {
+                        coda.HitLane(time, i);
+                    }
+                }
+            }
         }
 
         protected void ToggleFret(int fret, bool active)

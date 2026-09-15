@@ -453,23 +453,6 @@ namespace YARG.Core.Engine.Keys.Engines
             return false;
         }
 
-        protected override List<CodaSection> GetCodaSections()
-        {
-            var codaSections = new List<CodaSection>();
-
-            foreach (var phrase in Chart.Phrases)
-            {
-                if (phrase.Type != PhraseType.BigRockEnding)
-                {
-                    continue;
-                }
-
-                codaSections.Add(new CodaSection(6, phrase.Time, phrase.TimeEnd));
-            }
-
-            return codaSections;
-        }
-
         private static ProKeysAction FiveLaneKeysActionToProKeysAction(FiveLaneKeysAction fiveLaneKeysAction)
         {
             return fiveLaneKeysAction switch

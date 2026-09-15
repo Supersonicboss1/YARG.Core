@@ -1593,8 +1593,7 @@ namespace YARG.Core.Engine
             }
         }
 
-        // TODO: Make this abstract and put a GetCodaSections implementation in all engines
-        protected virtual List<CodaSection> GetCodaSections()
+        protected List<CodaSection> GetCodaSections()
         {
             var codaSections = new List<CodaSection>();
 
@@ -1605,7 +1604,7 @@ namespace YARG.Core.Engine
                     continue;
                 }
 
-                codaSections.Add(new CodaSection(5, phrase.Time, phrase.TimeEnd));
+                codaSections.Add(new CodaSection(CodaScoringZoneCount, phrase.Time, phrase.TimeEnd));
             }
 
             return codaSections;

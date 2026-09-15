@@ -57,6 +57,8 @@ namespace YARG.Core.Engine.Guitar.Engines
         /// </summary>
         private const int FRET_BUTTON_MASK = 0x3F;
 
+        protected override int CodaScoringZoneCount => 3;
+
         public YargSixFretGuitarEngine(InstrumentDifficulty<GuitarNote> chart, SyncTrack syncTrack,
             GuitarEngineParameters engineParameters, bool isBot)
             : base(chart, syncTrack, engineParameters, isBot)
@@ -109,7 +111,7 @@ namespace YARG.Core.Engine.Guitar.Engines
         /// Finds the fret with the highest fret number (1-3) in a mask, considering only
         /// fret buttons (bits 0-5). In 6-fret, B3 (bit 2) has a lower bit position than
         /// W1 (bit 3), but B3 is fret 3 (higher than W1's fret 1). We must iterate all
-        /// bits to find the highest fret number rather than relying on <see cref="GetMostSignificantBit"/>
+        /// bits to find the highest fret number rather than relying on <see cref="BaseEngine{TNoteType,TEngineParams,TEngineStats}.GetMostSignificantBit">GetMostSignificantBit</see>
         /// which only finds the highest bit position.
         /// Returns the 0-indexed bit position of that fret, or -1 if no fret buttons are held.
         /// </summary>
@@ -267,13 +269,5 @@ namespace YARG.Core.Engine.Guitar.Engines
 
             return GetFretNumberFromBitPosition(highestAnchorPosition) < targetFretNumber;
         }
-
-        protected override byte[] CreateCodaFretMask() => new byte[6];
-
-        /// <summary>
-        /// Six-fret condenses its 6 fret buttons into 3 BRE lanes (one per fret number,
-        /// black + white pair). CodaSection remaps button bits 0-5 to lanes 0-2.
-        /// </summary>
-        protected override int GetCodaFretCount() => 3;
     }
 }

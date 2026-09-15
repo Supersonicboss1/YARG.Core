@@ -519,24 +519,5 @@ namespace YARG.Core.Engine.Keys.Engines
                 }
             }
         }
-
-        protected override List<CodaSection> GetCodaSections()
-        {
-            var codaSections = new List<CodaSection>();
-
-            foreach (var phrase in Chart.Phrases)
-            {
-                if (phrase.Type != PhraseType.BigRockEnding)
-                {
-                    continue;
-                }
-
-                // We might only need 3 scoring zones in practice, depending on the range, but the engine can't
-                // know about the range shifts so we have to just allocate the max
-                codaSections.Add(new CodaSection(4, phrase.Time, phrase.TimeEnd));
-            }
-
-            return codaSections;
-        }
     }
 }
