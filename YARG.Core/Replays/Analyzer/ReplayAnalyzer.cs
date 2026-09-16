@@ -274,7 +274,7 @@ namespace YARG.Core.Replays.Analyzer
                     var fiveLaneNotes = _chart.GetFiveFretTrack(profile.CurrentInstrument)
                         .GetDifficulty(profile.CurrentDifficulty).Clone();
                     profile.ApplyModifiers(fiveLaneNotes, _chart.SyncTrack);
-                    manager.Register((FiveLaneKeysEngine)engine, fiveLaneNotes, _chart, rockMeterPreset);
+                    manager.Register((NonProKeysEngine)engine, fiveLaneNotes, _chart, rockMeterPreset);
                     break;
                 }
                 case GameMode.Vocals:

@@ -405,8 +405,8 @@ namespace YARG.Core.Engine
                     case ProKeysEngine proKeysEngine:
                         proKeysEngine.OnOverhit += OnKeysOverhit;
                         break;
-                    case FiveLaneKeysEngine fiveLaneKeysEngine:
-                        fiveLaneKeysEngine.OnOverhit += OnKeysOverhit;
+                    case NonProKeysEngine nonProKeysEngine:
+                        nonProKeysEngine.OnOverhit += OnKeysOverhit;
                         break;
                     case VocalsEngine vocalsEngine:
                         vocalsEngine.OnPhraseHit += OnVocalPhraseHit;
@@ -442,8 +442,8 @@ namespace YARG.Core.Engine
                     case ProKeysEngine proKeysEngine:
                         proKeysEngine.OnOverhit -= OnKeysOverhit;
                         break;
-                    case FiveLaneKeysEngine fiveLaneKeysEngine:
-                        fiveLaneKeysEngine.OnOverhit -= OnKeysOverhit;
+                    case NonProKeysEngine nonProKeysEngine:
+                        nonProKeysEngine.OnOverhit -= OnKeysOverhit;
                         break;
                     case VocalsEngine vocalsEngine:
                         vocalsEngine.OnPhraseHit -= OnVocalPhraseHit;

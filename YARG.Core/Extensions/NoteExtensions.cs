@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using YARG.Core.Chart;
 using YARG.Core.Input;
-using static YARG.Core.Engine.Keys.FiveLaneKeysEngine;
+using static YARG.Core.Engine.Keys.Engines.YargFiveLaneKeysEngine;
 
 namespace YARG.Core.Extensions
 {

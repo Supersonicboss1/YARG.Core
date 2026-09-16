@@ -1,5 +1,6 @@
 ﻿using System;
-using static YARG.Core.Engine.Keys.FiveLaneKeysEngine;
+using YARG.Core.Engine.Keys.Engines;
+using static YARG.Core.Engine.Keys.Engines.YargFiveLaneKeysEngine;
 
 namespace YARG.Core.Chart
 {

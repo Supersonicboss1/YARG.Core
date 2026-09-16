@@ -1,16 +1,42 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using YARG.Core.Chart;
 using YARG.Core.Input;
 using YARG.Core.Logging;
-using YARG.Core.Engine.Keys;
 
 namespace YARG.Core.Engine.Keys.Engines
 {
-    public class YargFiveLaneKeysEngine : FiveLaneKeysEngine
+    public class YargFiveLaneKeysEngine : NonProKeysEngine
     {
         private KeyPressedTimes[] _keyPressedTimes = new KeyPressedTimes[7];
+
+        // 5 normal lanes, plus the open lane
+        protected override int CodaScoringZoneCount => 6;
+
+        public enum FiveLaneKeysAction {
+            GreenKey  = 0,
+            RedKey    = 1,
+            YellowKey = 2,
+            BlueKey   = 3,
+            OrangeKey = 4,
+            // 5 intentionally left blank for symmetry with 6F
+            OpenNote = 6,
+            Wildcard = 7,
+        }
+
+        protected FiveLaneKeysAction ProKeysActionToFiveLaneKeysAction(ProKeysAction action)
+        {
+            return action switch
+            {
+                ProKeysAction.GreenKey  => FiveLaneKeysAction.GreenKey,
+                ProKeysAction.RedKey    => FiveLaneKeysAction.RedKey,
+                ProKeysAction.YellowKey => FiveLaneKeysAction.YellowKey,
+                ProKeysAction.BlueKey   => FiveLaneKeysAction.BlueKey,
+                ProKeysAction.OrangeKey => FiveLaneKeysAction.OrangeKey,
+                ProKeysAction.OpenNote  => FiveLaneKeysAction.OpenNote,
+                _                       => throw new Exception("Unhandled")
+            };
+        }
 
         public YargFiveLaneKeysEngine(InstrumentDifficulty<GuitarNote> chart, SyncTrack syncTrack,
             KeysEngineParameters engineParameters, bool isBot) : base(chart, syncTrack, engineParameters, isBot)

@@ -1,38 +1,25 @@
 ﻿using System;
 using System.Collections.Generic;
 using YARG.Core.Chart;
+using YARG.Core.Engine.Keys.Engines;
 using YARG.Core.Input;
 using YARG.Core.Logging;
 
 namespace YARG.Core.Engine.Keys
 {
-    public abstract class FiveLaneKeysEngine : KeysEngine<GuitarNote>
+    public abstract class NonProKeysEngine : KeysEngine<GuitarNote>
     {
-        protected override int WildcardMask => 1 << (int) FiveLaneKeysAction.Wildcard;
+        // Please make sure any engine is symmetrical with 5LK with respect to the wildcard mask
+        protected override int WildcardMask => 1 << (int) YargFiveLaneKeysEngine.FiveLaneKeysAction.Wildcard;
 
-        // 5 normal lanes, plus the open lane
-        // TODO: This may need to be overridden in YargFiveLaneKeysEngine instead, depending on how 6L keys is designed
-        protected override int CodaScoringZoneCount => 6;
-
-        public enum FiveLaneKeysAction {
-            GreenKey = 0,
-            RedKey = 1,
-            YellowKey = 2,
-            BlueKey = 3,
-            OrangeKey = 4,
-            // 5 intentionally left blank for symmetry with 6F
-            OpenNote = 6,
-            Wildcard = 7,
-        }
-
-        public bool IsKeyHeld(FiveLaneKeysAction key)
+        public bool IsKeyHeld(int key)
         {
-            return (KeyMask & (1 << (int)key)) != 0;
+            return (KeyMask & (1 << key)) != 0;
         }
 
         protected override double[] KeyPressTimes { get; } = new double[8];
 
-        protected FiveLaneKeysEngine(InstrumentDifficulty<GuitarNote> chart, SyncTrack syncTrack,
+        protected NonProKeysEngine(InstrumentDifficulty<GuitarNote> chart, SyncTrack syncTrack,
             KeysEngineParameters engineParameters, bool isBot)
             : base(chart, syncTrack, engineParameters, isBot)
         {
@@ -42,7 +29,7 @@ namespace YARG.Core.Engine.Keys
         protected override bool CanSustainHold(GuitarNote note)
         {
             return (KeyMask & note.DisjointMask) != 0 ||
-                (KeyMask > 0 && note.FiveLaneKeysAction is FiveLaneKeysAction.Wildcard);
+                (KeyMask > 0 && note.FiveLaneKeysAction is YargFiveLaneKeysEngine.FiveLaneKeysAction.Wildcard);
         }
 
         protected override void HitNote(GuitarNote note)
@@ -243,20 +230,6 @@ namespace YARG.Core.Engine.Keys
             }
 
             return false;
-        }
-
-        protected FiveLaneKeysAction ProKeysActionToFiveLaneKeysAction(ProKeysAction action)
-        {
-            return action switch
-            {
-                ProKeysAction.GreenKey => FiveLaneKeysAction.GreenKey,
-                ProKeysAction.RedKey => FiveLaneKeysAction.RedKey,
-                ProKeysAction.YellowKey => FiveLaneKeysAction.YellowKey,
-                ProKeysAction.BlueKey => FiveLaneKeysAction.BlueKey,
-                ProKeysAction.OrangeKey => FiveLaneKeysAction.OrangeKey,
-                ProKeysAction.OpenNote => FiveLaneKeysAction.OpenNote,
-                _ => throw new Exception("Unhandled")
-            };
         }
     }
 }
