@@ -602,8 +602,9 @@ namespace YARG.Core.Chart
             int lastOriginalMask = 0;
             int lastShuffledMask = 0;
 
-            foreach (var parent in difficulty.Notes)
+            for (int noteIndex = 0; noteIndex < difficulty.Notes.Count; noteIndex++)
             {
+                var parent = difficulty.Notes[noteIndex];
                 // Reset state
                 // Must be done first and not last, otherwise skipping a note won't reset state
                 currentNotes.Clear();
@@ -613,15 +614,13 @@ namespace YARG.Core.Chart
                 // Clear no-longer-active notes
                 for (int i = 0; i < activeNotes.Length; i++)
                 {
-                    if (activeNotes[i] is not {} activeNote)
-                        continue; // Already inactive
+                    if (activeNotes[i] is not { } activeNote) continue; // Already inactive
 
                     bool isActive = activeNote.TickLength == 0
                         ? activeNote.TickEnd == parent.Tick // If the note has no length, its end is inclusive
                         : activeNote.TickEnd > parent.Tick; // Otherwise, the end is exclusive
 
-                    if (!isActive)
-                        activeNotes[i] = null;
+                    if (!isActive) activeNotes[i] = null;
                 }
 
                 // Set up grab bag
@@ -636,8 +635,10 @@ namespace YARG.Core.Chart
                 foreach (var note in parent.AllNotes)
                 {
                     // Don't shuffle open notes
-                    if (note.Fret == 0)
+                    if (note.Fret == (int) FiveFretGuitarFret.Open)
+                    {
                         continue;
+                    }
 
                     currentNotes.Add(note);
                 }
@@ -652,8 +653,7 @@ namespace YARG.Core.Chart
                     {
                         for (int i = 1; i <= 5; i++)
                         {
-                            if ((lastShuffledMask & (1 << i)) != 0)
-                                selectedFrets.Add(i);
+                            if ((lastShuffledMask & (1 << i)) != 0) selectedFrets.Add(i);
                         }
                     }
                 }
@@ -665,8 +665,7 @@ namespace YARG.Core.Chart
                     {
                         for (int i = 1; i <= 5; i++)
                         {
-                            if ((lastShuffledMask & (1 << i)) != 0)
-                                availableFrets.Remove(i);
+                            if ((lastShuffledMask & (1 << i)) != 0) availableFrets.Remove(i);
                         }
                     }
                 }
@@ -682,7 +681,8 @@ namespace YARG.Core.Chart
                     {
                         // Ignore un-shuffleable notes
                         var note = currentNotes[i];
-                        YargLogger.LogFormatWarning("Cannot shuffle note at {0:0.000} ({1}), removing.", note.Time, note.Tick);
+                        YargLogger.LogFormatWarning("Cannot shuffle note at {0:0.000} ({1}), removing.", note.Time,
+                            note.Tick);
                         continue;
                     }
 
@@ -694,13 +694,13 @@ namespace YARG.Core.Chart
                 for (int i = 0; i < parent.ChildNotes.Count; i++)
                 {
                     var child = parent.ChildNotes[i];
-                    if (!currentNotes.Contains(child) && child.Fret != 0) // Don't remove open notes
+                    if (!currentNotes.Contains(child) &&
+                        child.Fret != (int) FiveFretGuitarFret.Open) // Don't remove open notes
                         parent.RemoveChildNote(child);
                 }
 
                 // Skip open notes and 5-note chords
-                if (currentNotes.Count < 1 || currentNotes.Count >= 5)
-                    continue;
+                if (currentNotes.Count < 1 || currentNotes.Count >= 5) continue;
 
                 // Sort notes/frets to prepare for the next step
                 currentNotes.Sort((left, right) => left.Fret.CompareTo(right.Fret));
@@ -713,7 +713,8 @@ namespace YARG.Core.Chart
                 }
 
                 // Apply shuffled frets
-                YargLogger.Assert(currentNotes.Count == selectedFrets.Count, "Current notes and selected frets must be the same size!");
+                YargLogger.Assert(currentNotes.Count == selectedFrets.Count,
+                    "Current notes and selected frets must be the same size!");
                 var newChordMask = 0;
                 for (int i = 0; i < selectedFrets.Count; i++)
                 {
@@ -728,6 +729,36 @@ namespace YARG.Core.Chart
                 // Fix the note mask to match the new frets, but keep the open/wildcard bits
                 parent.NoteMask = (parent.NoteMask & ~0b11111) | (newChordMask & 0b11111);
                 lastShuffledMask = parent.NoteMask;
+                if (noteIndex < difficulty.Notes.Count - 1 && parent is { IsLaneStart: true, IsTremolo: true })
+                {
+                    var currentNote = difficulty.Notes[noteIndex + 1];
+                    while (noteIndex < difficulty.Notes.Count - 1 && currentNote is { IsLane: true, IsTremolo: true })
+                    {
+                        YargLogger.Assert(currentNote.ChildNotes.Count == parent.ChildNotes.Count,
+                            "Tremolo notes must have the same number of child notes!");
+                        // Copy everything from the parent note to the next note, except for the time/tick
+                        currentNote.Fret = parent.Fret;
+                        currentNote.NoteMask = parent.NoteMask;
+                        currentNote.DisjointMask = parent.DisjointMask;
+                        for (int i = 0; i < parent.ChildNotes.Count; i++)
+                        {
+                            var child = parent.ChildNotes[i];
+                            var nextChild = currentNote.ChildNotes[i];
+                            nextChild.Fret = child.Fret;
+                            nextChild.NoteMask = child.NoteMask;
+                            nextChild.DisjointMask = child.DisjointMask;
+                        }
+
+                        YargLogger.LogFormatDebug("Updating lane note {0} to same as previous lane note",
+                            noteIndex + 1);
+                        noteIndex++;
+                        if (currentNote.IsLaneEnd)
+                        {
+                            break;
+                        }
+                        currentNote = difficulty.Notes[noteIndex + 1];
+                    }
+                }
                 continue;
 
                 static double DistanceWeight(double deltaTime, int minChance, int maxChance)
