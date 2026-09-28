@@ -587,9 +587,15 @@ namespace YARG.Core.Chart
             shifts.RemoveRange(1, shifts.Count - 1);
         }
 
-        //TODO: This does not
+        //TODO: Clean this BS up
         public static void ShuffleNotes(this InstrumentDifficulty<GuitarNote> difficulty, int seed)
         {
+            const double MAX_IDENTICAL_NOTE_TIME_DISTANCE = 1.0;
+            if (difficulty.Difficulty is Difficulty.Beginner)
+            {
+                // Beginner is only wildcards. No.
+                return;
+            }
             var random = new Random(seed);
             var activeNotes = new GuitarNote?[5 + 1]; // 5 frets, one open note
 
@@ -597,14 +603,33 @@ namespace YARG.Core.Chart
             var availableFrets = new List<int>();
             var selectedFrets = new List<int>();
 
-            double lastNoteTime = 0;
-            int lastNoteCount = 0;
-            int lastOriginalMask = 0;
             int lastShuffledMask = 0;
 
             for (int noteIndex = 0; noteIndex < difficulty.Notes.Count; noteIndex++)
             {
                 var parent = difficulty.Notes[noteIndex];
+
+                int identicalNoteCount = 0;
+                if (noteIndex < difficulty.Notes.Count - 1)
+                {
+                    var previousNote = parent;
+                    for (int i = noteIndex + 1; i < difficulty.Notes.Count; i++)
+                    {
+                        var currentNote = difficulty.Notes[i];
+                        if (currentNote.NoteMask == parent.NoteMask &&
+                            currentNote.ChildNotes.Count == parent.ChildNotes.Count &&
+                            currentNote.Time - previousNote.TimeEnd < MAX_IDENTICAL_NOTE_TIME_DISTANCE)
+                        {
+                            identicalNoteCount++;
+                            previousNote = currentNote;
+                        }
+                        else
+                        {
+                            break;
+                        }
+                    }
+                }
+
                 // Reset state
                 // Must be done first and not last, otherwise skipping a note won't reset state
                 currentNotes.Clear();
@@ -643,36 +668,10 @@ namespace YARG.Core.Chart
                     currentNotes.Add(note);
                 }
 
-                int originalMask = parent.NoteMask;
-                double deltaTime = parent.Time - lastNoteTime;
-
-                if (currentNotes.Count == lastNoteCount && originalMask == lastOriginalMask)
+                for (int i = 1; i <= 5; i++)
                 {
-                    // Prefer to make consecutive same-fret notes still be consecutive
-                    if (random.Next(100) < DistanceWeight(deltaTime, 60, 100))
-                    {
-                        for (int i = 1; i <= 5; i++)
-                        {
-                            if ((lastShuffledMask & (1 << i)) != 0) selectedFrets.Add(i);
-                        }
-                    }
+                    if ((lastShuffledMask & (1 << (i - 1))) != 0) availableFrets.Remove(i);
                 }
-                else
-                {
-                    // Prefer to keep different single notes different
-                    if (currentNotes.Count == 1 && lastShuffledMask.CountBits(5) == 1 &&
-                        random.Next(100) <= DistanceWeight(deltaTime, 60, 90))
-                    {
-                        for (int i = 1; i <= 5; i++)
-                        {
-                            if ((lastShuffledMask & (1 << i)) != 0) availableFrets.Remove(i);
-                        }
-                    }
-                }
-
-                lastNoteTime = parent.Time;
-                lastNoteCount = currentNotes.Count;
-                lastOriginalMask = originalMask;
 
                 // Pick a set of random notes for the chord
                 for (int i = selectedFrets.Count; i < currentNotes.Count; i++)
@@ -700,7 +699,7 @@ namespace YARG.Core.Chart
                 }
 
                 // Skip open notes and 5-note chords
-                if (currentNotes.Count < 1 || currentNotes.Count >= 5) continue;
+                if (currentNotes.Count is < 1 or >= 5) continue;
 
                 // Sort notes/frets to prepare for the next step
                 currentNotes.Sort((left, right) => left.Fret.CompareTo(right.Fret));
@@ -729,58 +728,70 @@ namespace YARG.Core.Chart
                 // Fix the note mask to match the new frets, but keep the open/wildcard bits
                 parent.NoteMask = (parent.NoteMask & ~0b11111) | (newChordMask & 0b11111);
                 lastShuffledMask = parent.NoteMask;
-                if (noteIndex < difficulty.Notes.Count - 1 && parent is { IsLaneStart: true, IsTremolo: true })
-                {
-                    var currentNote = difficulty.Notes[noteIndex + 1];
-                    while (noteIndex < difficulty.Notes.Count - 1 && currentNote is { IsLane: true, IsTremolo: true })
-                    {
-                        YargLogger.Assert(currentNote.ChildNotes.Count == parent.ChildNotes.Count,
-                            "Tremolo notes must have the same number of child notes!");
-                        // Copy everything from the parent note to the next note, except for the time/tick
-                        currentNote.Fret = parent.Fret;
-                        currentNote.NoteMask = parent.NoteMask;
-                        currentNote.DisjointMask = parent.DisjointMask;
-                        for (int i = 0; i < parent.ChildNotes.Count; i++)
-                        {
-                            var child = parent.ChildNotes[i];
-                            var nextChild = currentNote.ChildNotes[i];
-                            nextChild.Fret = child.Fret;
-                            nextChild.NoteMask = child.NoteMask;
-                            nextChild.DisjointMask = child.DisjointMask;
-                        }
 
-                        YargLogger.LogFormatDebug("Updating lane note {0} to same as previous lane note",
-                            noteIndex + 1);
-                        noteIndex++;
-                        if (currentNote.IsLaneEnd)
+                if (identicalNoteCount > 0)
+                {
+                    for (int j = 1; j <= identicalNoteCount; j++)
+                    {
+                        if (noteIndex + j >= difficulty.Notes.Count)
                         {
+                            // This should not be possible???
                             break;
                         }
-                        currentNote = difficulty.Notes[noteIndex + 1];
+                        var currentNote = difficulty.Notes[noteIndex + j];
+                        // Copy everything from the parent note to the next note, except for the time/tick
+                        CopyNoteFrets(parent, currentNote);
+                    }
+                    noteIndex += identicalNoteCount;
+                }
+
+                if (parent.IsTrill)
+                {
+                    HandleTrillAfterShuffle();
+                    // Second trill note, both lanes have now been handled
+                    if (noteIndex != 0 && parent.PreviousNote!.IsTrill)
+                    {
+                        // Advance noteIndex to past the trill
+                        while (noteIndex < difficulty.Notes.Count && difficulty.Notes[noteIndex] is {IsTrill: true, IsLaneEnd: false})
+                        {
+                            noteIndex++;
+                        }
                     }
                 }
+
                 continue;
 
-                static double DistanceWeight(double deltaTime, int minChance, int maxChance)
+                static void CopyNoteFrets(GuitarNote source, GuitarNote destination)
                 {
-                    const double offset = 0.1;
-                    const int falloffPower = 16; // Half-life reached at 0.0625 (0.1625 after offset is applied)
-
-                    double falloffRate = Math.Pow(2, falloffPower);
-                    double falloff = Falloff(deltaTime, falloffRate, offset);
-                    return YargMath.LerpClamped(minChance, maxChance, falloff);
+                    destination.Fret = source.Fret;
+                    destination.NoteMask = source.NoteMask;
+                    //currentNote.DisjointMask = parent.DisjointMask;
+                    for (int i = 0; i < source.ChildNotes.Count; i++)
+                    {
+                        var child = source.ChildNotes[i];
+                        var nextChild = destination.ChildNotes[i];
+                        nextChild.Fret = child.Fret;
+                        nextChild.NoteMask = child.NoteMask;
+                        //nextChild.DisjointMask = child.DisjointMask;
+                    }
                 }
 
-                static double Falloff(double x, double rate, double offset)
+                void HandleTrillAfterShuffle()
                 {
-                    // Falloff is exponential with respect to `x` and `rate`:
-                    // - Rate of 2^0 (1) = no falloff
-                    // - Rate of 2^1 (2) = half-life reached at 1
-                    // - Rate of 2^2 (4) = half-life reached at 0.5
-                    // - Rate of 2^3 (8) = half-life reached at 0.333...
-                    // - Rate of 2^4 (16) = half-life reached at 0.25
-                    // https://www.desmos.com/calculator/ydezyo9tou
-                    return Math.Pow(rate, -x + offset);
+                    var parentNote = difficulty.Notes[noteIndex];
+                    if (!parentNote.IsTrill)
+                    {
+                        return;
+                    }
+                    for (var i = noteIndex + 2; i < difficulty.Notes.Count; i += 2)
+                    {
+                        var currentNote = difficulty.Notes[i];
+                        if (!currentNote.IsTrill)
+                        {
+                            return;
+                        }
+                        CopyNoteFrets(parentNote, currentNote);
+                    }
                 }
             }
         }
