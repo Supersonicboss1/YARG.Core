@@ -18,7 +18,8 @@ namespace YARG.Core.Game
         NoDynamics    = 1 << 8,
         NoVocalPercussion = 1 << 9,
         RangeCompress = 1 << 10,
-        OpensToGreens = 1 << 11
+        OpensToGreens = 1 << 11,
+        DoubleNotes   = 1 << 12,
     }
 
     public static class ModifierConflicts
@@ -71,7 +72,8 @@ namespace YARG.Core.Game
                     Modifier.TapsToHopos   |
                     Modifier.RangeCompress |
                     Modifier.OpensToGreens |
-                    Modifier.NoteShuffle,
+                    Modifier.NoteShuffle   |
+                    Modifier.DoubleNotes,
 
 
                 GameMode.SixFretGuitar =>
@@ -79,7 +81,9 @@ namespace YARG.Core.Game
                     Modifier.AllHopos      |
                     Modifier.AllTaps       |
                     Modifier.HoposToTaps   |
-                    Modifier.TapsToHopos,
+                    Modifier.TapsToHopos   |
+                    Modifier.NoteShuffle   |
+                    Modifier.DoubleNotes,
 
                 GameMode.FourLaneDrums or
                 GameMode.FiveLaneDrums or

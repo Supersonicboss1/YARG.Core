@@ -395,6 +395,10 @@ namespace YARG.Core.Game
                     {
                         guitarTrack.ConvertFromOpenToGreen(syncTrack);
                     }
+                    if (IsModifierActive(Modifier.DoubleNotes))
+                    {
+                        guitarTrack.DoubleNotes(syncTrack);
+                    }
                     if (IsModifierActive(Modifier.AllStrums))
                     {
                         guitarTrack.ConvertToGuitarType(GuitarNoteType.Strum);
@@ -422,7 +426,7 @@ namespace YARG.Core.Game
 
                     if (IsModifierActive(Modifier.NoteShuffle))
                     {
-                        guitarTrack.ShuffleNotes(unchecked(songHash.GetHashCode() * 133769420)); // heh
+                        guitarTrack.ShuffleNotes(syncTrack, unchecked(songHash.GetHashCode() * 133769420)); // heh
                     }
 
                     break;

@@ -588,9 +588,10 @@ namespace YARG.Core.Chart
         }
 
         //TODO: Clean this BS up
-        public static void ShuffleNotes(this InstrumentDifficulty<GuitarNote> difficulty, int seed)
+        public static void ShuffleNotes(this InstrumentDifficulty<GuitarNote> difficulty, SyncTrack syncTrack, int seed)
         {
-            const double MAX_IDENTICAL_NOTE_TIME_DISTANCE = 1.0;
+            // Quarter note
+            uint maxIdenticalNoteTickDistance = syncTrack.Resolution;
             if (difficulty.Difficulty is Difficulty.Beginner)
             {
                 // Beginner is only wildcards. No.
@@ -610,25 +611,24 @@ namespace YARG.Core.Chart
                 var parent = difficulty.Notes[noteIndex];
 
                 int identicalNoteCount = 0;
-                if (noteIndex < difficulty.Notes.Count - 1)
+                var previousNote = parent;
+                for (int i = noteIndex + 1; i < difficulty.Notes.Count; i++)
                 {
-                    var previousNote = parent;
-                    for (int i = noteIndex + 1; i < difficulty.Notes.Count; i++)
+                    var currentNote = difficulty.Notes[i];
+                    if (currentNote.NoteMask == parent.NoteMask &&
+                        currentNote.ChildNotes.Count == parent.ChildNotes.Count &&
+                        // ugh, uint overflow
+                        (previousNote.TickEnd > currentNote.Tick || currentNote.Tick - previousNote.TickEnd <= maxIdenticalNoteTickDistance))
                     {
-                        var currentNote = difficulty.Notes[i];
-                        if (currentNote.NoteMask == parent.NoteMask &&
-                            currentNote.ChildNotes.Count == parent.ChildNotes.Count &&
-                            currentNote.Time - previousNote.TimeEnd < MAX_IDENTICAL_NOTE_TIME_DISTANCE)
-                        {
-                            identicalNoteCount++;
-                            previousNote = currentNote;
-                        }
-                        else
-                        {
-                            break;
-                        }
+                        identicalNoteCount++;
+                        previousNote = currentNote;
+                    }
+                    else
+                    {
+                        break;
                     }
                 }
+
 
                 // Reset state
                 // Must be done first and not last, otherwise skipping a note won't reset state
@@ -727,17 +727,13 @@ namespace YARG.Core.Chart
 
                 // Fix the note mask to match the new frets, but keep the open/wildcard bits
                 parent.NoteMask = (parent.NoteMask & ~0b11111) | (newChordMask & 0b11111);
+                parent.DisjointMask = parent.NoteMask;
                 lastShuffledMask = parent.NoteMask;
 
                 if (identicalNoteCount > 0)
                 {
                     for (int j = 1; j <= identicalNoteCount; j++)
                     {
-                        if (noteIndex + j >= difficulty.Notes.Count)
-                        {
-                            // This should not be possible???
-                            break;
-                        }
                         var currentNote = difficulty.Notes[noteIndex + j];
                         // Copy everything from the parent note to the next note, except for the time/tick
                         CopyNoteFrets(parent, currentNote);
@@ -765,14 +761,14 @@ namespace YARG.Core.Chart
                 {
                     destination.Fret = source.Fret;
                     destination.NoteMask = source.NoteMask;
-                    //currentNote.DisjointMask = parent.DisjointMask;
+                    destination.DisjointMask = source.DisjointMask;
                     for (int i = 0; i < source.ChildNotes.Count; i++)
                     {
-                        var child = source.ChildNotes[i];
-                        var nextChild = destination.ChildNotes[i];
-                        nextChild.Fret = child.Fret;
-                        nextChild.NoteMask = child.NoteMask;
-                        //nextChild.DisjointMask = child.DisjointMask;
+                        var sourceChild = source.ChildNotes[i];
+                        var destChild = destination.ChildNotes[i];
+                        destChild.Fret = sourceChild.Fret;
+                        destChild.NoteMask = sourceChild.NoteMask;
+                        destChild.DisjointMask = sourceChild.DisjointMask;
                     }
                 }
 
@@ -793,6 +789,181 @@ namespace YARG.Core.Chart
                         CopyNoteFrets(parentNote, currentNote);
                     }
                 }
+            }
+        }
+
+        // Used for all wildcards and all opens
+        public static void ConvertAllToFret(this InstrumentDifficulty<GuitarNote> difficulty, SyncTrack syncTrack,
+            int fret)
+        {
+            var sixteenthTickLength = syncTrack.Resolution / 4;
+            GuitarNote? lastSustain = null;
+            foreach (var note in difficulty.Notes)
+            {
+                note.Fret = fret;
+                note.NoteMask = 1 << (fret - 1);
+                note.DisjointMask = 1 << (fret - 1);
+                note.ChildNotes.Clear();
+
+                if (lastSustain != null && note.Tick - sixteenthTickLength <= lastSustain.TickEnd)
+                {
+                    TruncateSustain(lastSustain, note.Tick - sixteenthTickLength);
+                }
+
+                if (note.IsSustain)
+                {
+                    lastSustain = note;
+                }
+                else
+                {
+                    lastSustain = null;
+                }
+            }
+        }
+
+        // Contrary to its name, this just adds one note to every chord
+        public static void DoubleNotes(this InstrumentDifficulty<GuitarNote> difficulty, SyncTrack syncTrack)
+        {
+            // Fixed mapping for any chords that the default handling does weirdly
+            Dictionary<int, int> chordMaskToAddedFret = new()
+            {
+                [ChordMask(FiveFretGuitarFret.Green, FiveFretGuitarFret.Orange)] = (int) FiveFretGuitarFret.Blue,
+            };
+
+            var activeNotes = new GuitarNote?[(int)FiveFretGuitarFret.Wildcard];
+
+            var sixteenthTick = syncTrack.Resolution / 4;
+
+            int? previousPlacedFret = null;
+            GuitarNote? previousNote = null;
+            int previousNoteOriginalMask = 0;
+
+            foreach (var note in difficulty.Notes)
+            {
+                if (previousNote is not null)
+                {
+                    // Update the active sustains set
+                    foreach (var subNote in previousNote.AllNotes)
+                    {
+                        if (subNote.TickLength > 0)
+                        {
+                            activeNotes[subNote.Fret] = subNote;
+                        }
+                    }
+                    for (int i = 0; i < activeNotes.Length; i++)
+                    {
+                        var activeNote = activeNotes[i];
+                        if (activeNote is not null && activeNote.TickEnd < note.Tick)
+                        {
+                            activeNotes[i] = null;
+                        }
+                    }
+                }
+
+                if (previousNote is not null && previousPlacedFret.HasValue &&
+                    previousNoteOriginalMask == note.NoteMask &&
+                    activeNotes[previousPlacedFret.Value] is null)
+                {
+                    // Previous note was the same, apply the same chord and continue
+                    AddFret(note, previousPlacedFret.Value);
+                    previousNote = note;
+                    continue;
+                }
+
+                previousNoteOriginalMask = note.NoteMask;
+
+                // Fixed mapping for any chords that the default handling does weirdly, IF there is no active sustain on that fret
+                if (chordMaskToAddedFret.TryGetValue(note.NoteMask & 0b11111, out int addedFret) && activeNotes[addedFret] == null)
+                {
+                    AddFret(note, addedFret);
+                    previousNote = note;
+                    previousPlacedFret = addedFret;
+                    continue;
+                }
+
+                if (note.NoteMask == GuitarEngine.OPEN_MASK)
+                {
+                    // kinda sucks, but open chords are not really in the spirit of doubling
+                    previousNote = note;
+                    previousPlacedFret = null;
+                    continue;
+                }
+
+                int noteCountExcludingOpens = note.ChildNotes.Count + 1;
+                var usedMask = note.NoteMask;
+
+                if ((note.NoteMask & GuitarEngine.OPEN_MASK) != 0)
+                {
+                    noteCountExcludingOpens--;
+                }
+
+                int fret = (int) FiveFretGuitarFret.Open;
+                bool encounteredUsedFret = false;
+                bool avoidedFret = false;
+                // TODO: This fixes the issue of doubling a note on an active sustain, but it does not fix doubling a note
+                //  causing a previously placed note to be on an active sustain. Need to give this more thought.
+                int avoidedActiveSustain = -1;
+                for (int i = 1; i <= 5; i++)
+                {
+                    if ((usedMask & (1 << (i - 1))) != 0)
+                    {
+                        encounteredUsedFret = true;
+                        continue;
+                    }
+
+                    if (activeNotes[i] is not null)
+                    {
+                        YargLogger.LogFormatDebug("Avoiding fret {0} at time {1} because of active sustain", i, note.Time);
+                        avoidedActiveSustain = i;
+                        continue;
+                    }
+
+                    if (noteCountExcludingOpens <= 3 && previousNote is not null && previousPlacedFret.HasValue &&
+                        previousNote.NoteMask ==
+                        (note.NoteMask | (1 << (i - 1))))
+                    {
+                        // Avoid using the previous double notes chord on a different chord if possible
+                        YargLogger.LogFormatDebug("Avoiding fret {0} at time {1} because of previous chord",
+                            previousPlacedFret, note.Time);
+                        avoidedFret = true;
+                        continue;
+                    }
+
+                    fret = i;
+                    if (encounteredUsedFret)
+                    {
+                        break;
+                    }
+                }
+
+                if (fret is (int) FiveFretGuitarFret.Open)
+                {
+                    if (avoidedFret)
+                    {
+                        YargLogger.LogFormatDebug("Forced to place note at fret {0} on previous chord at time {1}", previousPlacedFret, note.Time);
+                        fret = previousPlacedFret!.Value;
+                    }
+                    else if (avoidedActiveSustain != -1)
+                    {
+                        YargLogger.LogFormatDebug("Forced to place note at fret {0} on active sustain at time {1}", avoidedActiveSustain, note.Time);
+                        fret = avoidedActiveSustain;
+                        TruncateSustain(activeNotes[avoidedActiveSustain]!, note.Tick - sixteenthTick);
+                    }
+                }
+                AddFret(note, fret);
+                previousPlacedFret = fret;
+                previousNote = note;
+            }
+            return;
+
+            void AddFret(GuitarNote note, int fret)
+            {
+                var newNote = new GuitarNote(fret, note.Type, note.GuitarFlags,
+                    note.Flags, note.Time, note.TimeLength, note.Tick, note.TickLength);
+                YargLogger.LogFormatDebug("Doubling note {0} at time {1} with fret {2}", note, note.Time, fret);
+                newNote.Flags |= note.Flags;
+                note.AddChildNote(newNote);
+                note.DisjointMask |= 1 << (fret - 1);
             }
         }
     }

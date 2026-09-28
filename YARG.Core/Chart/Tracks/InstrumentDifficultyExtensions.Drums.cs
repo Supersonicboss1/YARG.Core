@@ -238,7 +238,6 @@ namespace YARG.Core.Chart
             // return difficulty;
         }
 
-
         public static void RemoveDynamics(this InstrumentDifficulty<DrumNote> difficulty)
         {
             foreach (var i in difficulty.Notes)
@@ -249,5 +248,7 @@ namespace YARG.Core.Chart
                 }
             }
         }
+
+
     }
 }
