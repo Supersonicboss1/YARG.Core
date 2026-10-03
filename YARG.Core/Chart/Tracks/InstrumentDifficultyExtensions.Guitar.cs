@@ -587,7 +587,6 @@ namespace YARG.Core.Chart
             shifts.RemoveRange(1, shifts.Count - 1);
         }
 
-        //TODO: Clean this BS up
         public static void ShuffleNotes(this InstrumentDifficulty<GuitarNote> difficulty, SyncTrack syncTrack, int seed)
         {
             // Quarter note
@@ -618,7 +617,8 @@ namespace YARG.Core.Chart
                     if (currentNote.NoteMask == parent.NoteMask &&
                         currentNote.ChildNotes.Count == parent.ChildNotes.Count &&
                         // ugh, uint overflow
-                        (previousNote.TickEnd > currentNote.Tick || currentNote.Tick - previousNote.TickEnd <= maxIdenticalNoteTickDistance))
+                        (previousNote.TickEnd > currentNote.Tick ||
+                            currentNote.Tick - previousNote.TickEnd <= maxIdenticalNoteTickDistance))
                     {
                         identicalNoteCount++;
                         previousNote = currentNote;
@@ -738,6 +738,7 @@ namespace YARG.Core.Chart
                         // Copy everything from the parent note to the next note, except for the time/tick
                         CopyNoteFrets(parent, currentNote);
                     }
+
                     noteIndex += identicalNoteCount;
                 }
 
@@ -748,7 +749,8 @@ namespace YARG.Core.Chart
                     if (noteIndex != 0 && parent.PreviousNote!.IsTrill)
                     {
                         // Advance noteIndex to past the trill
-                        while (noteIndex < difficulty.Notes.Count && difficulty.Notes[noteIndex] is {IsTrill: true, IsLaneEnd: false})
+                        while (noteIndex < difficulty.Notes.Count && difficulty.Notes[noteIndex] is
+                            { IsTrill: true, IsLaneEnd: false })
                         {
                             noteIndex++;
                         }
@@ -779,6 +781,7 @@ namespace YARG.Core.Chart
                     {
                         return;
                     }
+
                     for (var i = noteIndex + 2; i < difficulty.Notes.Count; i += 2)
                     {
                         var currentNote = difficulty.Notes[i];
@@ -786,6 +789,7 @@ namespace YARG.Core.Chart
                         {
                             return;
                         }
+
                         CopyNoteFrets(parentNote, currentNote);
                     }
                 }
@@ -841,7 +845,7 @@ namespace YARG.Core.Chart
                 [ChordMask(FiveFretGuitarFret.Green, FiveFretGuitarFret.Orange)] = (int) FiveFretGuitarFret.Blue,
             };
 
-            var activeNotes = new GuitarNote?[(int)FiveFretGuitarFret.Wildcard];
+            var activeNotes = new GuitarNote?[(int) FiveFretGuitarFret.Wildcard];
 
             var sixteenthTick = syncTrack.Resolution / 4;
 
@@ -861,6 +865,7 @@ namespace YARG.Core.Chart
                             activeNotes[subNote.Fret] = subNote;
                         }
                     }
+
                     for (int i = 0; i < activeNotes.Length; i++)
                     {
                         var activeNote = activeNotes[i];
@@ -884,7 +889,8 @@ namespace YARG.Core.Chart
                 previousNoteOriginalMask = note.NoteMask;
 
                 // Fixed mapping for any chords that the default handling does weirdly, IF there is no active sustain on that fret
-                if (chordMaskToAddedFret.TryGetValue(note.NoteMask & 0b11111, out int addedFret) && activeNotes[addedFret] == null)
+                if (chordMaskToAddedFret.TryGetValue(note.NoteMask & 0b11111, out int addedFret) &&
+                    activeNotes[addedFret] == null)
                 {
                     AddFret(note, addedFret);
                     previousNote = note;
@@ -924,7 +930,8 @@ namespace YARG.Core.Chart
 
                     if (activeNotes[i] is not null)
                     {
-                        YargLogger.LogFormatDebug("Avoiding fret {0} at time {1} because of active sustain", i, note.Time);
+                        YargLogger.LogFormatDebug("Avoiding fret {0} at time {1} because of active sustain", i,
+                            note.Time);
                         avoidedActiveSustain = i;
                         continue;
                     }
@@ -951,7 +958,8 @@ namespace YARG.Core.Chart
                 {
                     if (avoidedFret)
                     {
-                        YargLogger.LogFormatDebug("Forced to place note at fret {0} on previous chord at time {1}", previousPlacedFret, note.Time);
+                        YargLogger.LogFormatDebug("Forced to place note at fret {0} on previous chord at time {1}",
+                            previousPlacedFret, note.Time);
                         fret = previousPlacedFret!.Value;
                     }
                     else if (avoidedActiveSustain != -1)
@@ -961,10 +969,12 @@ namespace YARG.Core.Chart
                         TruncateSustain(activeNotes[avoidedActiveSustain]!, note.Tick - sixteenthTick);
                     }
                 }
+
                 AddFret(note, fret);
                 previousPlacedFret = fret;
                 previousNote = note;
             }
+
             return;
 
             void AddFret(GuitarNote note, int fret)
@@ -974,7 +984,6 @@ namespace YARG.Core.Chart
                 YargLogger.LogFormatDebug("Doubling note {0} at time {1} with fret {2}", note, note.Time, fret);
                 newNote.Flags |= note.Flags;
                 note.AddChildNote(newNote);
-                note.DisjointMask |= 1 << (fret - 1);
             }
         }
     }
