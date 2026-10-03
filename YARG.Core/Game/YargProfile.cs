@@ -423,6 +423,16 @@ namespace YARG.Core.Game
                     {
                         guitarTrack.CompressGuitarRange();
                     }
+                    else if (IsModifierActive(Modifier.AllWildcards))
+                    {
+                        guitarTrack.ConvertAllToFret(syncTrack, (int) FiveFretGuitarFret.Wildcard);
+                        guitarTrack.ConvertToGuitarType(GuitarNoteType.Strum);
+                    }
+                    else if (IsModifierActive(Modifier.AllOpens))
+                    {
+                        guitarTrack.ConvertAllToFret(syncTrack, (int) FiveFretGuitarFret.Open);
+                        guitarTrack.ConvertToGuitarType(GuitarNoteType.Strum);
+                    }
 
                     if (IsModifierActive(Modifier.NoteShuffle))
                     {
@@ -441,7 +451,15 @@ namespace YARG.Core.Game
 
                     if (IsModifierActive(Modifier.NoKicks))
                     {
-                        drumsTrack.RemoveKickDrumNotes();
+                        drumsTrack.RemovePads((int) FourLaneDrumPad.Kick);
+                    }
+                    else if (IsModifierActive(Modifier.AllWildcards))
+                    {
+                        drumsTrack.ConvertAllToPad((int) FourLaneDrumPad.Wildcard);
+                    }
+                    else if (IsModifierActive(Modifier.OnlyKicks))
+                    {
+                        drumsTrack.RemoveAllExceptPads((int) FourLaneDrumPad.Kick);
                     }
 
                     if (IsModifierActive(Modifier.NoDynamics))

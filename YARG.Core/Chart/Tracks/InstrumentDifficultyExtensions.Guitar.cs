@@ -727,7 +727,7 @@ namespace YARG.Core.Chart
 
                 // Fix the note mask to match the new frets, but keep the open/wildcard bits
                 parent.NoteMask = (parent.NoteMask & ~0b11111) | (newChordMask & 0b11111);
-                parent.DisjointMask = parent.NoteMask;
+                parent.DisjointMask = 1 << (parent.Fret - 1);
                 lastShuffledMask = parent.NoteMask;
 
                 if (identicalNoteCount > 0)
@@ -796,6 +796,11 @@ namespace YARG.Core.Chart
         public static void ConvertAllToFret(this InstrumentDifficulty<GuitarNote> difficulty, SyncTrack syncTrack,
             int fret)
         {
+            if (difficulty.Difficulty is Difficulty.Beginner && fret is (int) FiveFretGuitarFret.Wildcard)
+            {
+                // No point, Beginner is already all wildcards
+                return;
+            }
             var sixteenthTickLength = syncTrack.Resolution / 4;
             GuitarNote? lastSustain = null;
             foreach (var note in difficulty.Notes)
@@ -804,6 +809,12 @@ namespace YARG.Core.Chart
                 note.NoteMask = 1 << (fret - 1);
                 note.DisjointMask = 1 << (fret - 1);
                 note.ChildNotes.Clear();
+                note.GuitarFlags = GuitarNoteFlags.None;
+                if (note.Flags.HasFlag(NoteFlags.Trill))
+                {
+                    note.ClearFlag(NoteFlags.Trill);
+                    note.ActivateFlag(NoteFlags.Tremolo);
+                }
 
                 if (lastSustain != null && note.Tick - sixteenthTickLength <= lastSustain.TickEnd)
                 {

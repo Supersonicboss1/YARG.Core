@@ -20,6 +20,9 @@ namespace YARG.Core.Game
         RangeCompress = 1 << 10,
         OpensToGreens = 1 << 11,
         DoubleNotes   = 1 << 12,
+        AllWildcards  = 1 << 13,
+        AllOpens      = 1 << 14,
+        OnlyKicks     = 1 << 15,
     }
 
     public static class ModifierConflicts
@@ -35,7 +38,29 @@ namespace YARG.Core.Game
             Modifier.AllHopos    |
             Modifier.AllTaps     |
             Modifier.HoposToTaps |
-            Modifier.TapsToHopos,
+            Modifier.TapsToHopos |
+            Modifier.AllWildcards|
+            Modifier.AllOpens,
+
+            Modifier.AllWildcards  |
+            Modifier.AllOpens |
+            Modifier.DoubleNotes,
+
+            Modifier.AllWildcards |
+            Modifier.AllOpens |
+            Modifier.NoteShuffle,
+
+            Modifier.AllWildcards |
+            Modifier.AllOpens |
+            Modifier.OpensToGreens,
+
+            Modifier.AllWildcards |
+            Modifier.AllOpens |
+            Modifier.RangeCompress,
+
+            Modifier.AllWildcards |
+            Modifier.NoKicks |
+            Modifier.OnlyKicks,
         };
 
         // Returns two modifier sets. The first set ("possible" modifiers) represents modifiers that should be
@@ -73,7 +98,9 @@ namespace YARG.Core.Game
                     Modifier.RangeCompress |
                     Modifier.OpensToGreens |
                     Modifier.NoteShuffle   |
-                    Modifier.DoubleNotes,
+                    Modifier.DoubleNotes   |
+                    Modifier.AllWildcards  |
+                    Modifier.AllOpens,
 
 
                 GameMode.SixFretGuitar =>
@@ -83,13 +110,17 @@ namespace YARG.Core.Game
                     Modifier.HoposToTaps   |
                     Modifier.TapsToHopos   |
                     Modifier.NoteShuffle   |
-                    Modifier.DoubleNotes,
+                    Modifier.DoubleNotes   |
+                    Modifier.AllWildcards  |
+                    Modifier.AllOpens,
 
                 GameMode.FourLaneDrums or
                 GameMode.FiveLaneDrums or
                 GameMode.EliteDrums =>
-                    Modifier.NoKicks    |
-                    Modifier.NoDynamics,
+                    Modifier.NoKicks      |
+                    Modifier.NoDynamics   |
+                    Modifier.AllWildcards |
+                    Modifier.OnlyKicks,
 
                 GameMode.Vocals =>
                     Modifier.UnpitchedOnly |
@@ -99,9 +130,9 @@ namespace YARG.Core.Game
                     Modifier.RangeCompress |
                     Modifier.OpensToGreens,
 
-                GameMode.ProGuitar     or
-            //  GameMode.Dj            or
-                GameMode.ProKeys       => Modifier.None,
+                GameMode.ProGuitar  /* or
+                GameMode.Dj */
+                   => Modifier.None,
 
                 _  => throw new NotImplementedException($"Unhandled game mode {gameMode}!")
             };
