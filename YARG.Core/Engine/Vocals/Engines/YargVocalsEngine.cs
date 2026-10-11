@@ -249,7 +249,7 @@ namespace YARG.Core.Engine.Vocals.Engines
                  *  - Add timing leniency support outside of LenientUnpitched (maybe? try it first)
                  *  - Fix whatever is sometimes causing LenientUnpitched to award way too many ticks
                  */
-                // We will apply a leniency here and assume that it will also hit all other
+                // We will apply leniency here and assume that it will also hit all other
                 // ticks, since the user cannot change pitch between inputs.
                 var maxLeniency = 1.0 / EngineParameters.ApproximateVocalFps;
                 var lastTick = Math.Max(
@@ -261,12 +261,12 @@ namespace YARG.Core.Engine.Vocals.Engines
                 YargLogger.LogFormatDebug("Tick boost: {0}, Tick Progress: {1}", tickBoost, tickProgress);
                 var ticksHit = Math.Min(ticksSinceLast * hitPercent, PhraseTicksTotal!.Value - TicksHitInCurrentNote) * tickBoost;
                 YargLogger.LogFormatDebug("TicksHitInCurrentNote: {0}, TotalTickLength: {1}", TicksHitInCurrentNote, note.TotalTickLength);
-                if (TicksHitInCurrentNote >= note.TotalTickLength * DetermineHitLeniency(note.TotalTimeLength))
-                {
-                    YargLogger.LogFormatDebug("Awarding remaining ticks for note at {0}", note.Time);
-                    ticksHit = note.TotalTickEnd - CurrentTick;
-                    LastSingTick = note.TotalTickEnd;
-                }
+                // if (TicksHitInCurrentNote >= note.TotalTickLength * DetermineHitLeniency(note.TotalTimeLength))
+                // {
+                //     YargLogger.LogFormatDebug("Awarding remaining ticks for note at {0}", note.Time);
+                //     ticksHit = note.TotalTickEnd - CurrentTick;
+                //     LastSingTick = note.TotalTickEnd;
+                // }
                 uint maxScoringTicks = (uint) Math.Round(PhraseTicksTotal!.Value * EngineParameters.PhraseHitPercent);
                 if (PhraseTicksHit < maxScoringTicks)
                 {
