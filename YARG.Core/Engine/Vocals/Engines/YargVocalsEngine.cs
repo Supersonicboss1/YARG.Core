@@ -305,24 +305,15 @@ namespace YARG.Core.Engine.Vocals.Engines
 
         private static double DetermineTickBoost(double tickProgress)
         {
-            // return tickProgress switch
-            // {
-            //     // Quadruple ticks for first 25% of ticks hit
-            //     < 0.25 => 4 - 2 * YargMath.InverseLerpD(0.0, 0.25, tickProgress),
-            //     // Double ticks for next 25% of ticks hit
-            //     < 0.5 => 2 - 1 * YargMath.InverseLerpD(0.25, 0.5, tickProgress),
-            //     // Half ticks for next 25% of ticks hit
-            //     < 0.75 => 1 - 0.5 * YargMath.InverseLerpD(0.5, 0.75, tickProgress),
-            //     // Quarter ticks for last 25% of ticks hit
-            //     _ => 0.5 * YargMath.InverseLerpD(0.75, 1.0, tickProgress)
-            // };
-
-            // Idea 2: Even linear scale from 2-1, then 1-0.5
-            return tickProgress switch
+            const float floor = 0.25f;
+            const float exponent = 2f;
+            if (tickProgress is < 0 or > 1)
             {
-                < 0.5 => 2 - 1 * YargMath.InverseLerpD(0.0, 0.5, tickProgress),
-                _ => 1 - 0.5 * YargMath.InverseLerpD(0.5, 1.0, tickProgress)
-            };
+                return 1;
+            }
+            // Any formula used here should integrate to roughly 1 across [0,1] (aka have an area of 1 between x=0 and x=1)
+            // This is to avoid awarding extra ticks for any given note
+            return floor + (1 - floor) * exponent * Math.Pow(1 - tickProgress, exponent - 1);
         }
 
         private void CheckPercussionHit()
