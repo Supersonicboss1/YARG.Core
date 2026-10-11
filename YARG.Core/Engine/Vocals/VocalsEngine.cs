@@ -14,6 +14,8 @@ namespace YARG.Core.Engine.Vocals
 
         protected VocalNote? CarriedVocalNote;
 
+        protected VocalNote? PreviousVocalNote;
+
         public delegate void TargetNoteChangeEvent(VocalNote targetNote);
 
         public delegate void PhraseHitEvent(double hitPercentAfterParams, bool fullPoints, bool isLastPhrase);
@@ -52,6 +54,12 @@ namespace YARG.Core.Engine.Vocals
         public double PhraseTicksHit { get; protected set; }
 
         /// <summary>
+        /// The amount of ticks hit in the current vocal note.
+        /// This is a decimal since you can get fractions of a point for singing slightly off.
+        /// </summary>
+        public double TicksHitInCurrentNote { get; protected set; }
+
+        /// <summary>
         /// The amount of ticks hit in this phrase while star power was active.
         /// For example, if a phrase had 10 ticks, and you hit half of those in SP, this should be 5.
         /// This is a decimal since you can get fractions of a point for singing slightly off.
@@ -69,6 +77,8 @@ namespace YARG.Core.Engine.Vocals
         /// The last tick where there was a successful sing input.
         /// </summary>
         public uint LastSingTick { get; protected set; }
+
+        public uint LastAwardTick { get; protected set; }
 
         protected VocalsEngine(InstrumentDifficulty<VocalNote> chart, SyncTrack syncTrack,
             VocalsEngineParameters engineParameters, bool isBot)
@@ -321,9 +331,19 @@ namespace YARG.Core.Engine.Vocals
             for (int i = 0; i < childNotes.Count; i++)
             {
                 var phraseNote = childNotes[i];
-                if (!phraseNote.IsPercussion &&
-                    tick >= phraseNote.Tick &&
-                    tick <= phraseNote.TotalTickEnd)
+                if (phraseNote.IsPercussion)
+                {
+                    continue;
+                }
+                uint startTick = phraseNote.Tick;
+                uint endTick = phraseNote.TotalTickEnd;
+                if (phraseNote.LenientUnpitched)
+                {
+                    startTick -= phraseNote.TotalTickLength / 2;
+                    endTick += phraseNote.TotalTickLength / 2;
+                }
+
+                if (tick >= startTick && tick <= endTick)
                 {
                     return phraseNote;
                 }

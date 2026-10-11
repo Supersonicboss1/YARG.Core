@@ -97,6 +97,29 @@ namespace YARG.Core.Chart
         public bool IsCensorable { get; }
 
         /// <summary>
+        /// Whether this unpitched vocal note has extra leniency applied to the beginning and end of the note. <br/>
+        /// <seealso cref="LyricSymbolFlags.LenientScoring"/>
+        /// </summary>
+        public bool LenientUnpitched;
+
+        /// <summary>
+        /// Creates a new <see cref="VocalNote"/> with the given properties.
+        /// This constructor should be used for unpitched vocal notes only.
+        /// </summary>
+        public VocalNote(int harmonyPart, bool lenientScoring,
+            double time, double timeLength, uint tick, uint tickLength, bool isCensorable = false)
+            : base(NoteFlags.None, time, timeLength, tick, tickLength)
+        {
+            Type = VocalNoteType.Lyric;
+            Pitch = -1f;
+            HarmonyPart = harmonyPart;
+            LenientUnpitched = lenientScoring;
+            IsCensorable = isCensorable;
+            TotalTimeLength = timeLength;
+            TotalTickLength = tickLength;
+        }
+
+        /// <summary>
         /// Creates a new <see cref="VocalNote"/> with the given properties.
         /// This constructor should be used for notes only.
         /// </summary>
@@ -137,6 +160,7 @@ namespace YARG.Core.Chart
             TotalTimeLength = other.TotalTimeLength;
             TotalTickLength = other.TotalTickLength;
             IsCensorable = other.IsCensorable;
+            LenientUnpitched = other.LenientUnpitched;
         }
 
         /// <summary>

@@ -200,14 +200,14 @@ namespace YARG.Core.Engine.Vocals.Engines
 
             HasSang = false;
             var lastSingTick = LastSingTick;
-            LastSingTick = CurrentTick;
-
             // If the last sing detected was on the same tick (or less), skip it
             // since we've already handled that tick.
             if (lastSingTick >= CurrentTick)
             {
                 return;
             }
+
+            LastSingTick = CurrentTick;
 
             var phrase = Notes[NoteIndex];
 
@@ -223,19 +223,51 @@ namespace YARG.Core.Engine.Vocals.Engines
 
             OnTargetNoteChanged?.Invoke(note);
 
+            if (note != PreviousVocalNote)
+            {
+                TicksHitInCurrentNote = 0;
+                PreviousVocalNote = note;
+            }
+
             // This will never be a percussion note here
             if (CanVocalNoteBeHit(note, out float hitPercent))
             {
+                if (TicksHitInCurrentNote >= PhraseTicksTotal)
+                {
+                    // If we've already hit all the ticks in this note, we cannot hit any more
+                    OnHit?.Invoke(true);
+                    return;
+                }
+
+                if (lastSingTick < note.Tick)
+                {
+                    YargLogger.LogFormatDebug("Delay to first detected sing for note at {1}: {0}", CurrentTime - note.Time, note.Time);
+                }
+                /*
+                 * TODO:
+                 *  - Clean up whatever bullshit is going on with this code
+                 *  - Make it work with Free Harmonies
+                 *  - Add pitch leniency support (on slides and fast pitch changes)
+                 *  - Add timing leniency support outside of LenientUnpitched (maybe? try it first)
+                 */
                 // We will apply a leniency here and assume that it will also hit all other
                 // ticks, since the user cannot change pitch between inputs.
                 var maxLeniency = 1.0 / EngineParameters.ApproximateVocalFps;
                 var lastTick = Math.Max(
                     SyncTrack.TimeToTick(CurrentTime - maxLeniency),
                     lastSingTick);
-
                 var ticksSinceLast = CurrentTick - lastTick;
-                var ticksHit = ticksSinceLast * hitPercent;
-
+                var tickProgress = TicksHitInCurrentNote / note.TotalTickLength;
+                var tickBoost = DetermineTickBoost(tickProgress);
+                YargLogger.LogFormatDebug("Tick boost: {0}, Tick Progress: {1}", tickBoost, tickProgress);
+                var ticksHit = Math.Min(ticksSinceLast * hitPercent, PhraseTicksTotal!.Value - TicksHitInCurrentNote) * tickBoost;
+                YargLogger.LogFormatDebug("TicksHitInCurrentNote: {0}, TotalTickLength: {1}", TicksHitInCurrentNote, note.TotalTickLength);
+                if (TicksHitInCurrentNote >= note.TotalTickLength * DetermineHitLeniency(note.TotalTimeLength))
+                {
+                    YargLogger.LogFormatDebug("Awarding remaining ticks for note at {0}", note.Time);
+                    ticksHit = note.TotalTickEnd - CurrentTick;
+                    LastSingTick = note.TotalTickEnd;
+                }
                 uint maxScoringTicks = (uint) Math.Round(PhraseTicksTotal!.Value * EngineParameters.PhraseHitPercent);
                 if (PhraseTicksHit < maxScoringTicks)
                 {
@@ -251,7 +283,7 @@ namespace YARG.Core.Engine.Vocals.Engines
                         BandBonusTicks += ticksToAward * EngineStats.BandBonusMultiplier;
                     }
                 }
-
+                TicksHitInCurrentNote += ticksHit;
                 PhraseTicksHit += ticksHit;
                 OnHit?.Invoke(true);
             }
@@ -259,6 +291,39 @@ namespace YARG.Core.Engine.Vocals.Engines
             {
                 OnHit?.Invoke(false);
             }
+        }
+
+        private static double DetermineHitLeniency(double timeLength)
+        {
+            return 1;
+            return timeLength switch
+            {
+                < 0.18 => 0.01,
+                < 0.25 => 0.2 + 0.3 * YargMath.InverseLerpD(0.0, 0.25, timeLength),
+                _     => 0.5 + 0.25 * Math.Clamp(YargMath.InverseLerpD(0.1, 1.5, timeLength), 0, 1)
+            };
+        }
+
+        private static double DetermineTickBoost(double tickProgress)
+        {
+            // return tickProgress switch
+            // {
+            //     // Quadruple ticks for first 25% of ticks hit
+            //     < 0.25 => 4 - 2 * YargMath.InverseLerpD(0.0, 0.25, tickProgress),
+            //     // Double ticks for next 25% of ticks hit
+            //     < 0.5 => 2 - 1 * YargMath.InverseLerpD(0.25, 0.5, tickProgress),
+            //     // Half ticks for next 25% of ticks hit
+            //     < 0.75 => 1 - 0.5 * YargMath.InverseLerpD(0.5, 0.75, tickProgress),
+            //     // Quarter ticks for last 25% of ticks hit
+            //     _ => 0.5 * YargMath.InverseLerpD(0.75, 1.0, tickProgress)
+            // };
+
+            // Idea 2: Even linear scale from 2-1, then 1-0.5
+            return tickProgress switch
+            {
+                < 0.5 => 2 - 1 * YargMath.InverseLerpD(0.0, 0.5, tickProgress),
+                _ => 1 - 0.5 * YargMath.InverseLerpD(0.5, 1.0, tickProgress)
+            };
         }
 
         private void CheckPercussionHit()

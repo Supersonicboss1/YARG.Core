@@ -970,7 +970,20 @@ namespace YARG.Core.Chart
             var vocalType = GetVocalNoteType(moonNote);
             float pitch = GetVocalNotePitch(moonNote, lyricFlags);
             bool isCensorable = moonNote.flags.HasFlag(MoonNote.Flags.Vocals_Censorship);
+            bool hasLenientScoring = lyricFlags.HasFlag(LyricSymbolFlags.LenientScoring);
             double time = _moonSong.TickToTime(moonNote.tick);
+            if (hasLenientScoring && pitch < 0 && vocalType is VocalNoteType.Lyric)
+            {
+                return new VocalNote(harmonyPart, true, time, GetLengthInTime(moonNote), moonNote.tick, moonNote.length, isCensorable);
+            }
+            if (hasLenientScoring && pitch >= 0)
+            {
+              YargLogger.LogFormatWarning("Note at tick {0} is marked as lenient scoring but is pitched! Note will not have leniency applied.", moonNote.tick);
+            }
+            if (hasLenientScoring && vocalType is not VocalNoteType.Lyric)
+            {
+                YargLogger.LogFormatWarning("Note at tick {0} is marked as lenient scoring but is not a lyric note!", moonNote.tick);
+            }
             return new VocalNote(pitch, harmonyPart, vocalType, time, GetLengthInTime(moonNote), moonNote.tick, moonNote.length, isCensorable);
         }
 

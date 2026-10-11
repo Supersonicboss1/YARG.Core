@@ -231,7 +231,7 @@ namespace YARG.Core.Game
 
             [SettingType(SettingType.Slider)]
             [SettingRange(0f, 3f)]
-            public float PitchWindowX = 0.8f;
+            public float PitchWindowX = 1f;
 
             /// <summary>
             /// The perfect pitch window is equal to the pitch window times the perfect pitch percent,
@@ -260,7 +260,7 @@ namespace YARG.Core.Game
 
             [SettingType(SettingType.Slider)]
             [SettingRange(0f, 1f)]
-            public float HitPercentX = 0.575f;
+            public float HitPercentX = 0.625f;
 
             /// <summary>
             /// The hit window of percussion notes.
