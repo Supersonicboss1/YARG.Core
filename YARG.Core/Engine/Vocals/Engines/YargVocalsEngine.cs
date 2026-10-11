@@ -392,23 +392,33 @@ namespace YARG.Core.Engine.Vocals.Engines
                 EngineParameters.PitchWindowPerfect,
                 distanceToExpected);
             return true;
+        }
 
-            // Positive remainder
-            static float Mod(float a, float b)
+        private (float high, float low) GetPitchWindowMultiplier(VocalNote note)
+        {
+            // We want to add a leniency here for note switches, and pitch slides.
+            // The pitch window should be based on the (pitch / time) gradient between the two notes
+            // It also should only be in one direction, following the direction of the change (though this probably isn't important).
+
+            // We don't know whether we're working out a previous -> current or current -> next gradient, so we take the larger of the two.
+            return (0, 0);
+        }
+
+        // Positive remainder
+        private static float Mod(float a, float b)
+        {
+            var remainder = a % b;
+            if (remainder < 0)
             {
-                var remainder = a % b;
-                if (remainder < 0)
+                if (b < 0)
                 {
-                    if (b < 0)
-                    {
-                        return remainder - b;
-                    }
-
-                    return remainder + b;
+                    return remainder - b;
                 }
 
-                return remainder;
+                return remainder + b;
             }
+
+            return remainder;
         }
 
         protected override bool CanNoteBeHit(VocalNote note) => throw new NotImplementedException();
