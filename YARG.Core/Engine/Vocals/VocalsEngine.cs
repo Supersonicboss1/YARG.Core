@@ -67,6 +67,7 @@ namespace YARG.Core.Engine.Vocals
                     BaseStats.TotalNotes--;
                 }
             }
+            Solos = GetPercussionSections();
         }
 
         public override void Reset(bool keepCurrentButtons = false)
@@ -107,6 +108,23 @@ namespace YARG.Core.Engine.Vocals
             GetWaitCountdowns(allNotes);
         }
 
+        private List<SoloSection> GetPercussionSections()
+        {
+            var soloSections = new List<SoloSection>();
+
+            for (int i = 0; i < Notes.Count; i++)
+            {
+                var curr = Notes[i];
+                if (!curr.IsPercussionPhrase)
+                {
+                    continue;
+                }
+
+                soloSections.Add(new SoloSection(curr.Tick, curr.TotalTickEnd, curr.ChildNotes.Count));
+            }
+            return soloSections;
+        }
+
         protected override void GenerateQueuedUpdates(double nextTime)
         {
             base.GenerateQueuedUpdates(nextTime);
@@ -133,7 +151,8 @@ namespace YARG.Core.Engine.Vocals
 
             if (note.IsPercussion)
             {
-                AddScore(note);
+                //AddScore(note);
+                HandlePercussionNote(note);
                 OnNoteHit?.Invoke(NoteIndex, note);
             }
             else
@@ -166,6 +185,26 @@ namespace YARG.Core.Engine.Vocals
 
                 // I want to call base.HitNote here, but I have no idea how vocals handles hit state so I'm scared to
                 NoteIndex++;
+            }
+        }
+
+        private void HandlePercussionNote(VocalNote note)
+        {
+            if (!note.IsPercussion)
+            {
+                return;
+            }
+
+            if (CurrentSoloIndex >= Solos.Count)
+            {
+                // If this happens, something has probably gone wrong
+                YargLogger.LogFormatWarning("Percussion note has been hit at time {0}, but all percussion sections have already been completed! Ignoring section", CurrentTime);
+                return;
+            }
+
+            if (note.WasHit)
+            {
+                Solos[CurrentSoloIndex].NotesHit++;
             }
         }
 

@@ -86,6 +86,17 @@ namespace YARG.Core.Engine.Vocals.Engines
 
             CheckForNoteHit();
 
+            if (phrase.IsPercussionPhrase && !IsSoloActive && CurrentTick < phrase.TickEnd)
+            {
+                YargLogger.LogFormatDebug("Starting percussion phrase at tick {0} (phrase end: {1})", CurrentTick, phrase.TickEnd);
+                StartPercussionPhrase();
+            }
+            else if (phrase.IsPercussionPhrase && IsSoloActive && CurrentTick > phrase.TickEnd)
+            {
+                YargLogger.LogFormatDebug("Ending percussion phrase at tick {0} (phrase end: {1})", CurrentTick, phrase.TickEnd);
+                EndPercussionPhrase();
+            }
+
             // Check for the end of a phrase
             if (CurrentTick > phrase.TickEnd)
             {
@@ -124,6 +135,52 @@ namespace YARG.Core.Engine.Vocals.Engines
 
                 UpdateCarriedNote(phrase);
             }
+        }
+
+        private void StartPercussionPhrase()
+        {
+            if (CurrentSoloIndex >= Solos.Count)
+            {
+                return;
+            }
+            IsSoloActive = true;
+            OnSoloStart?.Invoke(Solos[CurrentSoloIndex]);
+        }
+
+        private void EndPercussionPhrase()
+        {
+            if (!IsSoloActive)
+            {
+                return;
+            }
+
+            var currentSolo = Solos[CurrentSoloIndex];
+
+            double soloPercentage = currentSolo.NotesHit / (double) currentSolo.NoteCount;
+
+            if (soloPercentage < 0.6)
+            {
+                currentSolo.SoloBonus = 0;
+            }
+            else
+            {
+                double multiplier = Math.Clamp((soloPercentage - 0.6) / 0.4, 0, 1);
+
+                // Old engine says this is 200 *, but I'm not sure that's right?? Isn't it 2x the note's worth, not 4x?
+                double points = POINTS_PER_PERCUSSION * currentSolo.NotesHit * multiplier;
+
+                // Round down to nearest 50 (kinda just makes sense I think?)
+                points -= points % 50;
+
+                currentSolo.SoloBonus = (int) points;
+            }
+
+            EngineStats.SoloBonuses += currentSolo.SoloBonus;
+
+            IsSoloActive = false;
+
+            OnSoloEnd?.Invoke(Solos[CurrentSoloIndex]);
+            CurrentSoloIndex++;
         }
 
         protected override void CheckForNoteHit()
