@@ -86,12 +86,12 @@ namespace YARG.Core.Engine.Vocals.Engines
 
             CheckForNoteHit();
 
-            if (phrase.IsPercussionPhrase && !IsSoloActive && CurrentTick < phrase.TickEnd)
+            if (!IsSoloActive && CurrentSoloIndex < Solos.Count && CurrentTick >= Solos[CurrentSoloIndex].StartTick)
             {
                 YargLogger.LogFormatDebug("Starting percussion phrase at tick {0} (phrase end: {1})", CurrentTick, phrase.TickEnd);
                 StartPercussionPhrase();
             }
-            else if (phrase.IsPercussionPhrase && IsSoloActive && CurrentTick > phrase.TickEnd)
+            else if (IsSoloActive && CurrentSoloIndex < Solos.Count && CurrentTick > Solos[CurrentSoloIndex].EndTick)
             {
                 YargLogger.LogFormatDebug("Ending percussion phrase at tick {0} (phrase end: {1})", CurrentTick, phrase.TickEnd);
                 EndPercussionPhrase();
@@ -167,9 +167,7 @@ namespace YARG.Core.Engine.Vocals.Engines
             }
             else
             {
-                double multiplier = Math.Clamp((soloPercentage - 0.6) / 0.4, 0, 1);
-
-                double points = PointsPerPercussion * currentSolo.NotesHit * multiplier;
+                double points = PointsPerPercussion * currentSolo.NotesHit;
 
                 // Round down to nearest 50 (kinda just makes sense I think?)
                 points -= points % 50;
@@ -249,6 +247,7 @@ namespace YARG.Core.Engine.Vocals.Engines
                  *  - Make it work with Free Harmonies
                  *  - Add pitch leniency support (on slides and fast pitch changes)
                  *  - Add timing leniency support outside of LenientUnpitched (maybe? try it first)
+                 *  - Fix whatever is sometimes causing LenientUnpitched to award way too many ticks
                  */
                 // We will apply a leniency here and assume that it will also hit all other
                 // ticks, since the user cannot change pitch between inputs.

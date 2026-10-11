@@ -143,7 +143,9 @@ namespace YARG.Core.Engine.Vocals
         private List<SoloSection> GetPercussionSections()
         {
             var soloSections = new List<SoloSection>();
-
+            // We do this since we need to join adjacent percussion phrases together into one solo
+            uint? startTick = null;
+            var totalNoteCount = 0;
             for (int i = 0; i < Notes.Count; i++)
             {
                 var curr = Notes[i];
@@ -152,7 +154,16 @@ namespace YARG.Core.Engine.Vocals
                     continue;
                 }
 
-                soloSections.Add(new SoloSection(curr.Tick, curr.TotalTickEnd, curr.ChildNotes.Count));
+                startTick ??= curr.Tick;
+                totalNoteCount += curr.ChildNotes.Count;
+
+                if (i >= Notes.Count - 1 || !Notes[i + 1].IsPercussionPhrase)
+                {
+                    soloSections.Add(new SoloSection(startTick.Value, curr.ChildNotes.Last().Tick, totalNoteCount));
+                    totalNoteCount = 0;
+                    startTick = null;
+                }
+
             }
             return soloSections;
         }
