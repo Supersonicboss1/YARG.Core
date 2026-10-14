@@ -71,6 +71,7 @@ namespace YARG.Core
         // 40-49: Vocals
         Vocals = 40,
         Harmony = 41,
+        PartyVocals = 42,
 
         // 50-59: DJ
         // DjSingle = 50,
@@ -219,7 +220,8 @@ namespace YARG.Core
                 Instrument.ProKeys => GameMode.ProKeys,
 
                 Instrument.Vocals or
-                Instrument.Harmony => GameMode.Vocals,
+                Instrument.Harmony or
+                Instrument.PartyVocals => GameMode.Vocals,
 
                 // Instrument.DjSingle => GameMode.Dj,
                 // Instrument.DjDouble => GameMode.Dj,
@@ -246,6 +248,12 @@ namespace YARG.Core
                     Instrument.SixFretBass,
                     Instrument.SixFretRhythm,
                     Instrument.SixFretCoopGuitar,
+                    // 5F is playable on 6F through the magical power of conversions
+                    Instrument.FiveFretGuitar,
+                    Instrument.FiveFretBass,
+                    Instrument.FiveFretRhythm,
+                    Instrument.FiveFretCoopGuitar,
+                    Instrument.Keys,
                 },
                 GameMode.FourLaneDrums => new[]
                 {
@@ -282,7 +290,8 @@ namespace YARG.Core
                 GameMode.Vocals => new[]
                 {
                     Instrument.Vocals,
-                    Instrument.Harmony
+                    Instrument.Harmony,
+                    Instrument.PartyVocals
                 },
                 // GameMode.Dj             => new[]
                 // {
