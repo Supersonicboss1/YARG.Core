@@ -104,6 +104,12 @@ namespace YARG.Core.Chart
             NoteMask |= GetNoteMask(note.Fret);
         }
 
+        public void ActivateGuitarFlag(GuitarNoteFlags flag)
+        {
+            _guitarFlags |= flag;
+            GuitarFlags |= flag;
+        }
+
         public override void RemoveChildNote(GuitarNote note)
         {
             if ((NoteMask & GetNoteMask(note.Fret)) == 0) return;

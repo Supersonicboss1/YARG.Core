@@ -240,6 +240,15 @@ namespace YARG.Core.Chart
             {
                 note.TimeLength *= (double) note.TickLength / oldTickLength;
             }
+
+            if (note.ParentOrSelf.ChildNotes.Count >= 1 && note.IsChild && note.ParentOrSelf.TickLength != note.TickLength)
+            {
+                // Mark the chord as disjoint, at least one sustain is a different length than the rest.
+                foreach (var subNote in note.ParentOrSelf.AllNotes)
+                {
+                    subNote.ActivateGuitarFlag(GuitarNoteFlags.Disjoint);
+                }
+            }
         }
 
         private static void SetSixFret(GuitarNote member, int fret)
@@ -883,6 +892,7 @@ namespace YARG.Core.Chart
                     // Previous note was the same, apply the same chord and continue
                     AddFret(note, previousPlacedFret.Value);
                     previousNote = note;
+                    MarkExtendedSustains(note);
                     continue;
                 }
 
@@ -895,6 +905,7 @@ namespace YARG.Core.Chart
                     AddFret(note, addedFret);
                     previousNote = note;
                     previousPlacedFret = addedFret;
+                    MarkExtendedSustains(note);
                     continue;
                 }
 
@@ -917,8 +928,6 @@ namespace YARG.Core.Chart
                 int fret = (int) FiveFretGuitarFret.Open;
                 bool encounteredUsedFret = false;
                 bool avoidedFret = false;
-                // TODO: This fixes the issue of doubling a note on an active sustain, but it does not fix doubling a note
-                //  causing a previously placed note to be on an active sustain. Need to give this more thought.
                 int avoidedActiveSustain = -1;
                 for (int i = 1; i <= 5; i++)
                 {
@@ -930,7 +939,7 @@ namespace YARG.Core.Chart
 
                     if (activeNotes[i] is not null)
                     {
-                        YargLogger.LogFormatDebug("Avoiding fret {0} at time {1} because of active sustain", i,
+                        YargLogger.LogFormatTrace("Avoiding fret {0} at time {1} because of active sustain", i,
                             note.Time);
                         avoidedActiveSustain = i;
                         continue;
@@ -941,7 +950,7 @@ namespace YARG.Core.Chart
                         (note.NoteMask | (1 << (i - 1))))
                     {
                         // Avoid using the previous double notes chord on a different chord if possible
-                        YargLogger.LogFormatDebug("Avoiding fret {0} at time {1} because of previous chord",
+                        YargLogger.LogFormatTrace("Avoiding fret {0} at time {1} because of previous chord",
                             previousPlacedFret, note.Time);
                         avoidedFret = true;
                         continue;
@@ -958,7 +967,7 @@ namespace YARG.Core.Chart
                 {
                     if (avoidedFret)
                     {
-                        YargLogger.LogFormatDebug("Forced to place note at fret {0} on previous chord at time {1}",
+                        YargLogger.LogFormatTrace("Forced to place note at fret {0} on previous chord at time {1}",
                             previousPlacedFret, note.Time);
                         fret = previousPlacedFret!.Value;
                     }
@@ -970,20 +979,85 @@ namespace YARG.Core.Chart
                     }
                 }
 
-                AddFret(note, fret);
+                var newNote = AddFret(note, fret);
+                if (newNote.TickLength > 0)
+                {
+                    // Add the new note to the active sustains set
+                    activeNotes[fret] = newNote;
+                }
+
                 previousPlacedFret = fret;
                 previousNote = note;
+
+                MarkExtendedSustains(note);
             }
 
             return;
 
-            void AddFret(GuitarNote note, int fret)
+            void MarkExtendedSustains(GuitarNote current)
             {
+                // A sustain overlapped by a later note is extended (forwards),
+                // and a sustain placed on top of a previous sustain is extended as well
+                // (backwards, only if it is itself a sustain).
+                bool overlappedPreviousSustain = false;
+                foreach (var activeNote in activeNotes)
+                {
+                    if (activeNote is null || activeNote.Tick == current.Tick)
+                    {
+                        continue;
+                    }
+
+                    if (activeNote.TickEnd > current.Tick)
+                    {
+                        activeNote.ActivateGuitarFlag(GuitarNoteFlags.ExtendedSustain);
+                        overlappedPreviousSustain = true;
+                    }
+                }
+
+                if (overlappedPreviousSustain)
+                {
+                    foreach (var subNote in current.AllNotes)
+                    {
+                        if (subNote.TickLength > 0)
+                        {
+                            subNote.ActivateGuitarFlag(GuitarNoteFlags.ExtendedSustain);
+                        }
+                    }
+                }
+            }
+
+            GuitarNote AddFret(GuitarNote note, int fret)
+            {
+                var currentNote = note;
+                uint tickEnd = note.TickEnd;
+                while (currentNote.NextNote is not null && currentNote.NextNote.Tick < tickEnd)
+                {
+                    currentNote = currentNote.NextNote;
+                    if (currentNote.Fret != fret)
+                    {
+                        continue;
+                    }
+
+                    tickEnd = currentNote.Tick - sixteenthTick;
+                    break;
+                }
+
+                var timeEnd = syncTrack.TickToTime(tickEnd);
                 var newNote = new GuitarNote(fret, note.Type, note.GuitarFlags,
-                    note.Flags, note.Time, note.TimeLength, note.Tick, note.TickLength);
-                YargLogger.LogFormatDebug("Doubling note {0} at time {1} with fret {2}", note, note.Time, fret);
-                newNote.Flags |= note.Flags;
+                    note.Flags, note.Time, timeEnd - note.Time, note.Tick, tickEnd - note.Tick);
+                newNote.ActivateFlag(note.Flags);
                 note.AddChildNote(newNote);
+                newNote.PreviousNote = note.PreviousNote;
+                newNote.NextNote = note.NextNote;
+                if (tickEnd != note.TickEnd)
+                {
+                    // At least one note ends at a different time to the rest, so mark all notes in the chord as disjoint
+                    foreach (var subNote in note.ParentOrSelf.AllNotes)
+                    {
+                        subNote.ActivateGuitarFlag(GuitarNoteFlags.Disjoint);
+                    }
+                }
+                return newNote;
             }
         }
 

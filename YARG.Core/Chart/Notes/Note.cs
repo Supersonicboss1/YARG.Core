@@ -70,7 +70,15 @@ namespace YARG.Core.Chart
         private TNote? _originalPreviousNote;
         private TNote? _originalNextNote;
 
+        /// <summary>
+        /// The previous note in the notes list, regardless of whether this is a parent or child note.
+        /// Null if this is the first note in the list.
+        /// </summary>
         public TNote? PreviousNote;
+        /// <summary>
+        /// The next note in the notes list, regardless of whether this is a parent or child note.
+        /// Null if this is the last note in the list.
+        /// </summary>
         public TNote? NextNote;
 
         public uint SustainTicksHeld;
