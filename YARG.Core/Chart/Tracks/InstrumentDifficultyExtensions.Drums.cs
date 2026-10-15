@@ -66,7 +66,6 @@ namespace YARG.Core.Chart
                 // No point, Beginner is already all wildcards
                 return;
             }
-            // TODO Lane merging logic, and correct kick lane flag handling (and correct flag handling in general)
             bool laneActive = false;
             foreach (var note in difficulty.Notes)
             {

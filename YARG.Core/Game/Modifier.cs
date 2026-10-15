@@ -23,6 +23,7 @@ namespace YARG.Core.Game
         AllWildcards  = 1 << 13,
         AllOpens      = 1 << 14,
         OnlyKicks     = 1 << 15,
+        TrueNoteShuffle = 1 << 16,
     }
 
     public static class ModifierConflicts
@@ -48,7 +49,8 @@ namespace YARG.Core.Game
 
             Modifier.AllWildcards |
             Modifier.AllOpens |
-            Modifier.NoteShuffle,
+            Modifier.NoteShuffle |
+            Modifier.TrueNoteShuffle,
 
             Modifier.AllWildcards |
             Modifier.AllOpens |
@@ -98,6 +100,7 @@ namespace YARG.Core.Game
                     Modifier.RangeCompress |
                     Modifier.OpensToGreens |
                     Modifier.NoteShuffle   |
+                    Modifier.TrueNoteShuffle |
                     Modifier.DoubleNotes   |
                     Modifier.AllWildcards  |
                     Modifier.AllOpens,
@@ -109,8 +112,9 @@ namespace YARG.Core.Game
                     Modifier.AllTaps       |
                     Modifier.HoposToTaps   |
                     Modifier.TapsToHopos   |
-                    Modifier.NoteShuffle   |
-                    Modifier.DoubleNotes   |
+                    // Modifier.NoteShuffle   |
+                    // Modifier.TrueNoteShuffle |
+                    // Modifier.DoubleNotes   |
                     Modifier.AllWildcards  |
                     Modifier.AllOpens,
 

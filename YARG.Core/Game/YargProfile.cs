@@ -444,6 +444,10 @@ namespace YARG.Core.Game
                     {
                         guitarTrack.ShuffleNotes(syncTrack, unchecked(songHash.GetHashCode() * 133769420), true); // heh
                     }
+                    else if (IsModifierActive(Modifier.TrueNoteShuffle))
+                    {
+                        guitarTrack.ShuffleNotes(syncTrack, unchecked(songHash.GetHashCode() * 133769420), false);
+                    }
 
                     break;
                 case GameMode.FourLaneDrums:
