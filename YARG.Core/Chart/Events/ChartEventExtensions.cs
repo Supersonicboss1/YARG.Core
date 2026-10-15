@@ -63,11 +63,11 @@ namespace YARG.Core.Chart
                     // NEXT note (we don't want to extend the solo).
                     if (note.NextNote != null)
                     {
-                        note.NextNote.Flags |= NoteFlags.SoloStart;
+                        note.NextNote.ActivateFlag(NoteFlags.SoloStart);
                         // Also add it to the child notes
                         foreach (var childNote in note.NextNote.ChildNotes)
                         {
-                            childNote.Flags |= NoteFlags.SoloStart;
+                            childNote.ActivateFlag(NoteFlags.SoloStart);
                         }
                     }
                 }
@@ -77,11 +77,11 @@ namespace YARG.Core.Chart
                     // PREVIOUS note (we don't want to extend the solo).
                     if (note.PreviousNote != null)
                     {
-                        note.PreviousNote.Flags |= NoteFlags.SoloEnd;
+                        note.PreviousNote.ActivateFlag(NoteFlags.SoloEnd);
                         // Also add it to the child notes
                         foreach (var childNote in note.PreviousNote.ChildNotes)
                         {
-                            childNote.Flags |= NoteFlags.SoloEnd;
+                            childNote.ActivateFlag(NoteFlags.SoloEnd);
                         }
                     }
                 }
@@ -92,11 +92,11 @@ namespace YARG.Core.Chart
                     // Make the next note the SP start, so as to not extend the SP section
                     if (note.NextNote != null)
                     {
-                        note.NextNote.Flags |= NoteFlags.StarPowerStart;
+                        note.NextNote.ActivateFlag(NoteFlags.StarPowerStart);
                         // Also add it to the child notes
                         foreach (var childNote in note.NextNote.ChildNotes)
                         {
-                            childNote.Flags |= NoteFlags.StarPowerStart;
+                            childNote.ActivateFlag(NoteFlags.StarPowerStart);
                         }
                     }
                 }
@@ -107,11 +107,11 @@ namespace YARG.Core.Chart
                     // PREVIOUS note (we don't want to extend the starpower section).
                     if (note.PreviousNote != null)
                     {
-                        note.PreviousNote.Flags |= NoteFlags.StarPowerEnd;
+                        note.PreviousNote.ActivateFlag(NoteFlags.StarPowerEnd);
                         // Also add it to the child notes
                         foreach (var childNote in note.PreviousNote.ChildNotes)
                         {
-                            childNote.Flags |= NoteFlags.StarPowerEnd;
+                            childNote.ActivateFlag(NoteFlags.StarPowerEnd);
                         }
                     }
                 }
