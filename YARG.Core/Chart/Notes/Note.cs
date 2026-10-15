@@ -65,6 +65,13 @@ namespace YARG.Core.Chart
         protected readonly List<TNote> _childNotes = new();
 
         private NoteFlags _flags;
+        /// <summary>
+        /// The flags for this note. This is a copy of the original flags, and can be modified during gameplay.
+        /// </summary>
+        /// <remarks>
+        /// When the <see cref="ResetNoteState">note state is reset</see> (for example, when starting a song), this will be reset to the original flags. <br/>
+        /// <b>Do not use this to apply permanent changes to the flags!</b> Use <see cref="ActivateFlag"/> and <see cref="ClearFlag"/> for that.
+        /// </remarks>
         public  NoteFlags Flags;
 
         private TNote? _originalPreviousNote;

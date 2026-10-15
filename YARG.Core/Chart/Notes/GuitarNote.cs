@@ -6,6 +6,13 @@ namespace YARG.Core.Chart
     public class GuitarNote : Note<GuitarNote>
     {
         private GuitarNoteFlags _guitarFlags;
+        /// <summary>
+        /// The guitar-specific flags for this note. This is a copy of the original flags, and can be modified during gameplay.
+        /// </summary>
+        /// <remarks>
+        /// When the <see cref="ResetNoteState">note state is reset</see> (for example, when starting a song), this will be reset to the original flags. <br/>
+        /// <b>Do not use this to apply permanent changes to the flags!</b> Use <see cref="ActivateGuitarFlag"/> and <see cref="ClearGuitarFlag"/> for that.
+        /// </remarks>
         public GuitarNoteFlags GuitarFlags;
 
         public int Fret         { get; set; }
@@ -108,6 +115,12 @@ namespace YARG.Core.Chart
         {
             _guitarFlags |= flag;
             GuitarFlags |= flag;
+        }
+
+        public void ClearGuitarFlag(GuitarNoteFlags flag)
+        {
+            _guitarFlags &= ~flag;
+            GuitarFlags &= ~flag;
         }
 
         public override void RemoveChildNote(GuitarNote note)
