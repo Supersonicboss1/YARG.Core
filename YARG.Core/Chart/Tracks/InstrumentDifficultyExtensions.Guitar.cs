@@ -20,7 +20,8 @@ namespace YARG.Core.Chart
         /// sustain is truncated at that tick (real charters cut sustains when a pattern needs
         /// the space). See Docs/5fret_to_6fret_conversion.md for the full description.
         /// </summary>
-        public static InstrumentDifficulty<GuitarNote> ConvertFiveFretToSixFret(this InstrumentDifficulty<GuitarNote> difficulty)
+        public static InstrumentDifficulty<GuitarNote> ConvertFiveFretToSixFret(
+            this InstrumentDifficulty<GuitarNote> difficulty)
         {
             var converted = new InstrumentDifficulty<GuitarNote>(difficulty);
 
@@ -106,6 +107,7 @@ namespace YARG.Core.Chart
                 int openBits = note.NoteMask & ~SIX_FRET_FRETS_MASK;
                 note.NoteMask = openBits | placedMask;
             }
+
             return converted;
         }
 
@@ -115,7 +117,8 @@ namespace YARG.Core.Chart
         /// highway physically swaps the two pad rows, so notes must swap rows with it.
         /// Open and wildcard notes are unchanged.
         /// </summary>
-        public static InstrumentDifficulty<GuitarNote> FlipSixFretColors(this InstrumentDifficulty<GuitarNote> difficulty)
+        public static InstrumentDifficulty<GuitarNote> FlipSixFretColors(
+            this InstrumentDifficulty<GuitarNote> difficulty)
         {
             var flipped = new InstrumentDifficulty<GuitarNote>(difficulty);
             foreach (var note in flipped.Notes)
@@ -136,6 +139,7 @@ namespace YARG.Core.Chart
                 // The parent's NoteMask is the union of its members' masks
                 note.NoteMask = memberMaskUnion;
             }
+
             return flipped;
         }
 
@@ -160,43 +164,37 @@ namespace YARG.Core.Chart
         {
             [ChordMask(FiveFretGuitarFret.Green, FiveFretGuitarFret.Red, FiveFretGuitarFret.Orange)] =
                 FretMap((FiveFretGuitarFret.Green, SixFretGuitarFret.Black1),
-                        (FiveFretGuitarFret.Red, SixFretGuitarFret.White1),
-                        (FiveFretGuitarFret.Orange, SixFretGuitarFret.White3)),
-
+                    (FiveFretGuitarFret.Red, SixFretGuitarFret.White1),
+                    (FiveFretGuitarFret.Orange, SixFretGuitarFret.White3)),
             [ChordMask(FiveFretGuitarFret.Red, FiveFretGuitarFret.Blue, FiveFretGuitarFret.Orange)] =
                 FretMap((FiveFretGuitarFret.Red, SixFretGuitarFret.Black2),
-                        (FiveFretGuitarFret.Blue, SixFretGuitarFret.White2),
-                        (FiveFretGuitarFret.Orange, SixFretGuitarFret.White3)),
-
+                    (FiveFretGuitarFret.Blue, SixFretGuitarFret.White2),
+                    (FiveFretGuitarFret.Orange, SixFretGuitarFret.White3)),
             [ChordMask(FiveFretGuitarFret.Yellow, FiveFretGuitarFret.Blue, FiveFretGuitarFret.Orange)] =
                 FretMap((FiveFretGuitarFret.Yellow, SixFretGuitarFret.White1),
-                        (FiveFretGuitarFret.Blue, SixFretGuitarFret.White2),
-                        (FiveFretGuitarFret.Orange, SixFretGuitarFret.Black3)),
-
+                    (FiveFretGuitarFret.Blue, SixFretGuitarFret.White2),
+                    (FiveFretGuitarFret.Orange, SixFretGuitarFret.Black3)),
             [ChordMask(FiveFretGuitarFret.Green, FiveFretGuitarFret.Red, FiveFretGuitarFret.Yellow, FiveFretGuitarFret.Orange)] =
                 FretMap((FiveFretGuitarFret.Green, SixFretGuitarFret.Black1),
-                        (FiveFretGuitarFret.Red, SixFretGuitarFret.White1),
-                        (FiveFretGuitarFret.Yellow, SixFretGuitarFret.Black2),
-                        (FiveFretGuitarFret.Orange, SixFretGuitarFret.White3)),
-
+                    (FiveFretGuitarFret.Red, SixFretGuitarFret.White1),
+                    (FiveFretGuitarFret.Yellow, SixFretGuitarFret.Black2),
+                    (FiveFretGuitarFret.Orange, SixFretGuitarFret.White3)),
             [ChordMask(FiveFretGuitarFret.Green, FiveFretGuitarFret.Red, FiveFretGuitarFret.Blue, FiveFretGuitarFret.Orange)] =
                 FretMap((FiveFretGuitarFret.Green, SixFretGuitarFret.Black1),
-                        (FiveFretGuitarFret.Red, SixFretGuitarFret.White1),
-                        (FiveFretGuitarFret.Blue, SixFretGuitarFret.Black3),
-                        (FiveFretGuitarFret.Orange, SixFretGuitarFret.White3)),
-
+                    (FiveFretGuitarFret.Red, SixFretGuitarFret.White1),
+                    (FiveFretGuitarFret.Blue, SixFretGuitarFret.Black3),
+                    (FiveFretGuitarFret.Orange, SixFretGuitarFret.White3)),
             [ChordMask(FiveFretGuitarFret.Red, FiveFretGuitarFret.Yellow, FiveFretGuitarFret.Blue, FiveFretGuitarFret.Orange)] =
                 FretMap((FiveFretGuitarFret.Red, SixFretGuitarFret.Black1),
-                        (FiveFretGuitarFret.Yellow, SixFretGuitarFret.White1),
-                        (FiveFretGuitarFret.Blue, SixFretGuitarFret.White2),
-                        (FiveFretGuitarFret.Orange, SixFretGuitarFret.White3)),
-
+                    (FiveFretGuitarFret.Yellow, SixFretGuitarFret.White1),
+                    (FiveFretGuitarFret.Blue, SixFretGuitarFret.White2),
+                    (FiveFretGuitarFret.Orange, SixFretGuitarFret.White3)),
             [ChordMask(FiveFretGuitarFret.Green, FiveFretGuitarFret.Red, FiveFretGuitarFret.Yellow, FiveFretGuitarFret.Blue, FiveFretGuitarFret.Orange)] =
                 FretMap((FiveFretGuitarFret.Green, SixFretGuitarFret.Black1),
-                        (FiveFretGuitarFret.Red, SixFretGuitarFret.White1),
-                        (FiveFretGuitarFret.Yellow, SixFretGuitarFret.Black2),
-                        (FiveFretGuitarFret.Blue, SixFretGuitarFret.White2),
-                        (FiveFretGuitarFret.Orange, SixFretGuitarFret.Black3)),
+                    (FiveFretGuitarFret.Red, SixFretGuitarFret.White1),
+                    (FiveFretGuitarFret.Yellow, SixFretGuitarFret.Black2),
+                    (FiveFretGuitarFret.Blue, SixFretGuitarFret.White2),
+                    (FiveFretGuitarFret.Orange, SixFretGuitarFret.Black3)),
         };
 
         private static int ChordMask(params FiveFretGuitarFret[] frets)
@@ -206,6 +204,7 @@ namespace YARG.Core.Chart
             {
                 mask |= 1 << ((int) fret - 1);
             }
+
             return mask;
         }
 
@@ -216,6 +215,7 @@ namespace YARG.Core.Chart
             {
                 map[(int) from] = (int) to;
             }
+
             return map;
         }
 
@@ -241,7 +241,8 @@ namespace YARG.Core.Chart
                 note.TimeLength *= (double) note.TickLength / oldTickLength;
             }
 
-            if (note.ParentOrSelf.ChildNotes.Count >= 1 && note.IsChild && note.ParentOrSelf.TickLength != note.TickLength)
+            if (note.ParentOrSelf.ChildNotes.Count >= 1 && note.IsChild &&
+                note.ParentOrSelf.TickLength != note.TickLength)
             {
                 // Mark the chord as disjoint, at least one sustain is a different length than the rest.
                 foreach (var subNote in note.ParentOrSelf.AllNotes)
@@ -308,6 +309,7 @@ namespace YARG.Core.Chart
                 {
                     currentOpen = note;
                 }
+
                 if (note.Fret == FiveFretGuitarFret.Green.Convert())
                 {
                     currentGreen = note;
@@ -321,6 +323,7 @@ namespace YARG.Core.Chart
                         {
                             currentOpen = childNote;
                         }
+
                         if (childNote.Fret == FiveFretGuitarFret.Green.Convert())
                         {
                             currentGreen = childNote;
@@ -331,7 +334,8 @@ namespace YARG.Core.Chart
                 if (currentOpen != null || currentGreen != null)
                 {
                     //cut off last green sustain early if there is another green note on it
-                    if (lastGreenSustain != null && (currentOpen != null || openInLastGreenSustainChordBeforeConversion) &&
+                    if (lastGreenSustain != null &&
+                        (currentOpen != null || openInLastGreenSustainChordBeforeConversion) &&
                         lastGreenSustain.Tick + lastGreenSustain.TickLength + sixteenthTickLength > note.Tick)
                     {
                         //if sustain would be cut off before starting remove sustain
@@ -359,6 +363,7 @@ namespace YARG.Core.Chart
                     {
                         currentOpen.NoteMask = noteMaskGreen;
                     }
+
                     if (currentOpen.IsSustain)
                     {
                         lastGreenSustain = currentOpen;
@@ -467,7 +472,7 @@ namespace YARG.Core.Chart
                 int shiftAmount = firstRange - shifts[shiftIndex].Range;
                 if (shiftAmount > 0)
                 {
-                    int maxFretAllowed = (int)FiveFretGuitarFret.Orange - shiftAmount;
+                    int maxFretAllowed = (int) FiveFretGuitarFret.Orange - shiftAmount;
 
                     for (int j = 0; j < note.ChildNotes.Count;)
                     {
@@ -486,6 +491,7 @@ namespace YARG.Core.Chart
                             child.NoteMask <<= shiftAmount;
                             child.DisjointMask <<= shiftAmount;
                         }
+
                         ++j;
                     }
 
@@ -499,6 +505,7 @@ namespace YARG.Core.Chart
                         {
                             continue;
                         }
+
                         note = difficulty.Notes[noteIndex];
                     }
                     else
@@ -510,8 +517,10 @@ namespace YARG.Core.Chart
 
                         if ((note.NoteMask & GuitarEngine.OPEN_MASK) != 0)
                         {
-                            note.NoteMask     = ((note.NoteMask     & ~GuitarEngine.OPEN_MASK) << shiftAmount) | GuitarEngine.OPEN_MASK;
-                            note.DisjointMask = ((note.DisjointMask & ~GuitarEngine.OPEN_MASK) << shiftAmount) | GuitarEngine.OPEN_MASK;
+                            note.NoteMask = ((note.NoteMask & ~GuitarEngine.OPEN_MASK) << shiftAmount) |
+                                GuitarEngine.OPEN_MASK;
+                            note.DisjointMask = ((note.DisjointMask & ~GuitarEngine.OPEN_MASK) << shiftAmount) |
+                                GuitarEngine.OPEN_MASK;
                         }
                         else
                         {
@@ -523,7 +532,7 @@ namespace YARG.Core.Chart
                 else if (shiftAmount < 0)
                 {
                     shiftAmount = -shiftAmount;
-                    int minFretAllowed = (int)FiveFretGuitarFret.Green + shiftAmount;
+                    int minFretAllowed = (int) FiveFretGuitarFret.Green + shiftAmount;
 
                     for (int j = 0; j < note.ChildNotes.Count;)
                     {
@@ -542,6 +551,7 @@ namespace YARG.Core.Chart
                             child.NoteMask >>= shiftAmount;
                             child.DisjointMask >>= shiftAmount;
                         }
+
                         ++j;
                     }
 
@@ -555,6 +565,7 @@ namespace YARG.Core.Chart
                         {
                             continue;
                         }
+
                         note = difficulty.Notes[noteIndex];
                     }
                     else
@@ -566,8 +577,10 @@ namespace YARG.Core.Chart
 
                         if ((note.NoteMask & GuitarEngine.OPEN_MASK) != 0)
                         {
-                            note.NoteMask     = ((note.NoteMask     & ~GuitarEngine.OPEN_MASK) >> shiftAmount) | GuitarEngine.OPEN_MASK;
-                            note.DisjointMask = ((note.DisjointMask & ~GuitarEngine.OPEN_MASK) >> shiftAmount) | GuitarEngine.OPEN_MASK;
+                            note.NoteMask = ((note.NoteMask & ~GuitarEngine.OPEN_MASK) >> shiftAmount) |
+                                GuitarEngine.OPEN_MASK;
+                            note.DisjointMask = ((note.DisjointMask & ~GuitarEngine.OPEN_MASK) >> shiftAmount) |
+                                GuitarEngine.OPEN_MASK;
                         }
                         else
                         {
@@ -590,6 +603,7 @@ namespace YARG.Core.Chart
                         laneEndTicks[childNote.Fret] = note.Tick + childNote.TickLength;
                     }
                 }
+
                 ++noteIndex;
             }
 
@@ -605,6 +619,7 @@ namespace YARG.Core.Chart
                 // Beginner is only wildcards. No.
                 return;
             }
+
             var random = new Random(seed);
             var activeNotes = new GuitarNote?[5 + 1]; // 5 frets, one open note
 
@@ -637,7 +652,6 @@ namespace YARG.Core.Chart
                         break;
                     }
                 }
-
 
                 // Reset state
                 // Must be done first and not last, otherwise skipping a note won't reset state
@@ -814,6 +828,7 @@ namespace YARG.Core.Chart
                 // No point, Beginner is already all wildcards
                 return;
             }
+
             var sixteenthTickLength = syncTrack.Resolution / 4;
             GuitarNote? lastSustain = null;
             foreach (var note in difficulty.Notes)
@@ -973,7 +988,8 @@ namespace YARG.Core.Chart
                     }
                     else if (avoidedActiveSustain != -1)
                     {
-                        YargLogger.LogFormatDebug("Forced to place note at fret {0} on active sustain at time {1}", avoidedActiveSustain, note.Time);
+                        YargLogger.LogFormatDebug("Forced to place note at fret {0} on active sustain at time {1}",
+                            avoidedActiveSustain, note.Time);
                         fret = avoidedActiveSustain;
                         TruncateSustain(activeNotes[avoidedActiveSustain]!, note.Tick - sixteenthTick);
                     }
@@ -1057,6 +1073,7 @@ namespace YARG.Core.Chart
                         subNote.ActivateGuitarFlag(GuitarNoteFlags.Disjoint);
                     }
                 }
+
                 return newNote;
             }
         }
