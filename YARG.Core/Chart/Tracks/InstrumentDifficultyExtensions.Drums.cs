@@ -61,41 +61,56 @@ namespace YARG.Core.Chart
         // Used for all wildcards and all opens
         public static void ConvertAllToPad(this InstrumentDifficulty<DrumNote> difficulty, int pad)
         {
-            if (difficulty.Difficulty is Difficulty.Beginner && pad is (int) FiveFretGuitarFret.Wildcard)
+            if (difficulty.Difficulty is Difficulty.Beginner)
             {
                 // No point, Beginner is already all wildcards
                 return;
             }
-
+            // TODO Lane merging logic, and correct kick lane flag handling (and correct flag handling in general)
+            bool laneActive = false;
             foreach (var note in difficulty.Notes)
             {
-                bool originallyKick = note.Pad is (int) FourLaneDrumPad.Kick;
+                // bool originallyKick = note.Pad is (int) FourLaneDrumPad.Kick;
                 note.Pad = pad;
                 note.ChildNotes.Clear();
-                if (pad is (int) FourLaneDrumPad.Kick)
+
+                DrumNoteFlags kickLaneFlags = 0;
+                NoteFlags laneFlags = 0;
+                if ((note.IsLaneStart | note.IsKickLaneStart) && !laneActive)
                 {
-                    if (note.IsLaneStart)
-                    {
-                        note.DrumFlags |= DrumNoteFlags.KickLaneStart;
-                    }
+                    laneActive = true;
+                    kickLaneFlags |= DrumNoteFlags.KickLaneStart;
+                    laneFlags |= NoteFlags.LaneStart;
+                }
 
-                    if (note.IsLaneEnd)
-                    {
-                        note.DrumFlags |= DrumNoteFlags.KickLaneEnd;
-                    }
+                if ((note.IsLaneEnd | note.IsKickLaneEnd) && note.NextNote is not null && !note.NextNote.IsAnyLane)
+                {
+                    laneActive = false;
+                    kickLaneFlags |= DrumNoteFlags.KickLaneEnd;
+                    laneFlags |= NoteFlags.LaneEnd;
+                }
 
-                    if (note.IsLane)
-                    {
-                        note.DrumFlags |= DrumNoteFlags.KickLane;
-                    }
+                if (note.IsAnyLane)
+                {
+                    laneFlags |= NoteFlags.Tremolo;
+                    kickLaneFlags |= DrumNoteFlags.KickLane;
+                }
+
+                // Clear the kick lane flags and lane flags before applying the new ones
+                note.ClearFlag(DrumNoteFlags.KickLane | DrumNoteFlags.KickLaneStart | DrumNoteFlags.KickLaneEnd);
+                note.ClearFlag(NoteFlags.LaneStart | NoteFlags.LaneEnd | NoteFlags.Tremolo | NoteFlags.Trill);
+
+                if ((FourLaneDrumPad) pad is FourLaneDrumPad.Kick)
+                {
+                    note.ActivateFlag(kickLaneFlags);
                 }
                 else
                 {
-                    note.DrumFlags &=
-                        ~(DrumNoteFlags.KickLane | DrumNoteFlags.KickLaneStart | DrumNoteFlags.KickLaneEnd);
+                    note.ActivateFlag(laneFlags);
                 }
             }
         }
+
 
         public static void RemoveDynamics(this InstrumentDifficulty<DrumNote> difficulty)
         {
@@ -110,6 +125,10 @@ namespace YARG.Core.Chart
 
         public static void RemovePads(this InstrumentDifficulty<DrumNote> difficulty, params int[] pads)
         {
+            if (difficulty.Difficulty is Difficulty.Beginner)
+            {
+                return;
+            }
             if (pads.Length == 0)
             {
                 return;
@@ -253,10 +272,10 @@ namespace YARG.Core.Chart
 
         private static void ApplyFlag(DrumNote note, DrumNoteFlags flag)
         {
-            note.DrumFlags |= flag;
+            note.ActivateFlag(flag);
             foreach (var childNote in note.ChildNotes)
             {
-                childNote.DrumFlags |= flag;
+                childNote.ActivateFlag(flag);
             }
         }
     }
