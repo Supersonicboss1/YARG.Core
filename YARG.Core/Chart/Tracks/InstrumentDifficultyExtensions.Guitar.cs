@@ -657,6 +657,16 @@ namespace YARG.Core.Chart
                     TruncateSustain(lastSustain, note.Tick - sixteenthTickLength);
                 }
 
+                if (note is { IsLaneEnd: true, NextNote: { IsLane: true } })
+                {
+                    note.ClearFlag(NoteFlags.LaneEnd);
+                }
+
+                if (note is { IsLaneStart: true, PreviousNote: { IsLane: true } })
+                {
+                    note.ClearFlag(NoteFlags.LaneStart);
+                }
+
                 if (note.IsSustain)
                 {
                     lastSustain = note;
