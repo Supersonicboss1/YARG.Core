@@ -442,7 +442,7 @@ namespace YARG.Core.Game
 
                     if (IsModifierActive(Modifier.NoteShuffle))
                     {
-                        guitarTrack.ShuffleNotes(syncTrack, unchecked(songHash.GetHashCode() * 133769420)); // heh
+                        guitarTrack.ShuffleNotes(syncTrack, unchecked(songHash.GetHashCode() * 133769420), true); // heh
                     }
 
                     break;
