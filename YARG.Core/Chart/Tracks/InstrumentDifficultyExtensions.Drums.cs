@@ -69,6 +69,7 @@ namespace YARG.Core.Chart
 
             foreach (var note in difficulty.Notes)
             {
+                bool originallyKick = note.Pad is (int) FourLaneDrumPad.Kick;
                 note.Pad = pad;
                 note.ChildNotes.Clear();
                 if (pad is (int) FourLaneDrumPad.Kick)

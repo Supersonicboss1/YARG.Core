@@ -11,7 +11,7 @@ namespace YARG.Core.Chart
         /// </summary>
         /// <remarks>
         /// When the <see cref="ResetNoteState">note state is reset</see> (for example, when starting a song), this will be reset to the original flags. <br/>
-        /// <b>Do not use this to apply permanent changes to the flags!</b> Use <see cref="ActivateGuitarFlag"/> and <see cref="ClearGuitarFlag"/> for that.
+        /// <b>Do not use this to apply permanent changes to the flags!</b> Use <see cref="ActivateFlag"/> and <see cref="ClearFlag"/> for that.
         /// </remarks>
         public GuitarNoteFlags GuitarFlags;
 
@@ -111,13 +111,13 @@ namespace YARG.Core.Chart
             NoteMask |= GetNoteMask(note.Fret);
         }
 
-        public void ActivateGuitarFlag(GuitarNoteFlags flag)
+        public void ActivateFlag(GuitarNoteFlags flag)
         {
             _guitarFlags |= flag;
             GuitarFlags |= flag;
         }
 
-        public void ClearGuitarFlag(GuitarNoteFlags flag)
+        public void ClearFlag(GuitarNoteFlags flag)
         {
             _guitarFlags &= ~flag;
             GuitarFlags &= ~flag;

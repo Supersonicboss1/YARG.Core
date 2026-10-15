@@ -52,7 +52,7 @@ namespace YARG.Core.Chart
                 // Mark the chord as disjoint, at least one sustain is a different length than the rest.
                 foreach (var subNote in note.ParentOrSelf.AllNotes)
                 {
-                    subNote.ActivateGuitarFlag(GuitarNoteFlags.Disjoint);
+                    subNote.ActivateFlag(GuitarNoteFlags.Disjoint);
                 }
             }
         }
@@ -837,7 +837,7 @@ namespace YARG.Core.Chart
 
                     if (activeNote.TickEnd > current.Tick)
                     {
-                        activeNote.ActivateGuitarFlag(GuitarNoteFlags.ExtendedSustain);
+                        activeNote.ActivateFlag(GuitarNoteFlags.ExtendedSustain);
                         overlappedPreviousSustain = true;
                     }
                 }
@@ -848,7 +848,7 @@ namespace YARG.Core.Chart
                     {
                         if (subNote.TickLength > 0)
                         {
-                            subNote.ActivateGuitarFlag(GuitarNoteFlags.ExtendedSustain);
+                            subNote.ActivateFlag(GuitarNoteFlags.ExtendedSustain);
                         }
                     }
                 }
@@ -882,7 +882,7 @@ namespace YARG.Core.Chart
                     // At least one note ends at a different time to the rest, so mark all notes in the chord as disjoint
                     foreach (var subNote in note.ParentOrSelf.AllNotes)
                     {
-                        subNote.ActivateGuitarFlag(GuitarNoteFlags.Disjoint);
+                        subNote.ActivateFlag(GuitarNoteFlags.Disjoint);
                     }
                 }
 
