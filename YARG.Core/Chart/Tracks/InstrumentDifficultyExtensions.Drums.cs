@@ -6,7 +6,8 @@ namespace YARG.Core.Chart
 {
     public partial class InstrumentDifficultyExtensions
     {
-        public static void SetDrumActivationFlags(this InstrumentDifficulty<DrumNote> difficulty, StarPowerActivationType activationType)
+        public static void SetDrumActivationFlags(this InstrumentDifficulty<DrumNote> difficulty,
+            StarPowerActivationType activationType)
         {
             var notes = difficulty.Notes;
 
@@ -15,7 +16,6 @@ namespace YARG.Core.Chart
 
             foreach (var phrase in difficulty.Phrases)
             {
-
                 if (phrase.Type != PhraseType.DrumFill)
                 {
                     continue;
@@ -66,6 +66,7 @@ namespace YARG.Core.Chart
                 // No point, Beginner is already all wildcards
                 return;
             }
+
             foreach (var note in difficulty.Notes)
             {
                 note.Pad = pad;
@@ -89,7 +90,8 @@ namespace YARG.Core.Chart
                 }
                 else
                 {
-                    note.DrumFlags &= ~(DrumNoteFlags.KickLane | DrumNoteFlags.KickLaneStart | DrumNoteFlags.KickLaneEnd);
+                    note.DrumFlags &=
+                        ~(DrumNoteFlags.KickLane | DrumNoteFlags.KickLaneStart | DrumNoteFlags.KickLaneEnd);
                 }
             }
         }
@@ -171,7 +173,8 @@ namespace YARG.Core.Chart
                     Phrase? activationPhrase = null;
                     foreach (var phrase in difficulty.Phrases)
                     {
-                        if (phrase.Type == PhraseType.DrumFill && phrase.Time < note.Time && phrase.TimeEnd >= note.Time)
+                        if (phrase.Type == PhraseType.DrumFill && phrase.Time < note.Time &&
+                            phrase.TimeEnd >= note.Time)
                         {
                             activationPhrase = phrase;
                             break;
@@ -224,14 +227,17 @@ namespace YARG.Core.Chart
             {
                 allPadsSet.Add((int) fourLanePad);
             }
+
             foreach (var fiveLanePad in EnumExtensions<FiveLaneDrumPad>.Values)
             {
                 allPadsSet.Add((int) fiveLanePad);
             }
+
             foreach (var removePads in pads)
             {
                 allPadsSet.Remove(removePads);
             }
+
             difficulty.RemovePads(allPadsSet.ToArray());
         }
 
@@ -252,6 +258,5 @@ namespace YARG.Core.Chart
                 childNote.DrumFlags |= flag;
             }
         }
-
     }
 }

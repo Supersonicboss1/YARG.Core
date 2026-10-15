@@ -8,195 +8,6 @@ namespace YARG.Core.Chart
 {
     public static partial class InstrumentDifficultyExtensions
     {
-        /// <summary>
-        /// Converts a 5-fret guitar difficulty into a 6-fret copy suitable for six-fret gameplay.
-        ///
-        /// The conversion is a direct per-chord lookup: 5-fret and 6-fret fret values coincide
-        /// numerically (Green-Orange = Black1-White2, Open is shared), so chords map 1:1 except
-        /// for a fixed table of chord substitutions (see Docs/5fret_to_6fret_conversion.md).
-        /// The full GRYBO chord maps to holding all six frets.
-        ///
-        /// When a chord strikes into a column that already carries an active sustain, the earlier
-        /// sustain is truncated at that tick (real charters cut sustains when a pattern needs
-        /// the space). See Docs/5fret_to_6fret_conversion.md for the full description.
-        /// </summary>
-        public static InstrumentDifficulty<GuitarNote> ConvertFiveFretToSixFret(
-            this InstrumentDifficulty<GuitarNote> difficulty)
-        {
-            var converted = new InstrumentDifficulty<GuitarNote>(difficulty);
-
-            var activeSustains = new List<(uint TickEnd, int Fret, GuitarNote Source)>();
-            foreach (var note in converted.Notes)
-            {
-                // Drop sustains that ended before this chord
-                activeSustains.RemoveAll(s => s.TickEnd <= note.Tick);
-
-                // Collect fretted members; Open/Wildcard members keep their shared value (7/8)
-                int frettedMask = 0;
-                foreach (var member in note.AllNotes)
-                {
-                    if (member.Fret is (int) FiveFretGuitarFret.Open or (int) FiveFretGuitarFret.Wildcard)
-                    {
-                        continue;
-                    }
-
-                    frettedMask |= 1 << (member.Fret - 1);
-                }
-
-                if (frettedMask == 0)
-                {
-                    continue;
-                }
-
-                FiveFretToSixFretSubstitutions.TryGetValue(frettedMask, out var substitution);
-
-                // Apply the direct mapping: identity unless this chord shape has a substitution
-                var placedMembers = new List<(GuitarNote Note, int Fret)>();
-                int placedMask = 0;
-                int placedColumns = 0;
-                foreach (var member in note.AllNotes)
-                {
-                    if (member.Fret is (int) FiveFretGuitarFret.Open or (int) FiveFretGuitarFret.Wildcard)
-                    {
-                        continue;
-                    }
-
-                    int placedFret = substitution is null ? member.Fret : substitution[member.Fret];
-                    SetSixFret(member, placedFret);
-                    placedMask |= 1 << (placedFret - 1);
-                    placedColumns |= 1 << ColumnOf(placedFret);
-                    placedMembers.Add((member, placedFret));
-                }
-
-                // The full GRYBO chord maps to holding all six frets: add a real sixth member
-                // on the remaining pad so the chord is complete both visually and mechanically.
-                // Added after the mapping so its fret (White3) cannot collide with a member.
-                if (frettedMask == FIVE_FRET_GRYBO_MASK)
-                {
-                    var sixthFret = new GuitarNote((int) SixFretGuitarFret.White3, note.Type,
-                        GuitarNoteFlags.None, NoteFlags.None, note.Time, 0, note.Tick, 0);
-                    note.AddChildNote(sixthFret);
-                    placedMask |= 1 << ((int) SixFretGuitarFret.White3 - 1);
-                    placedColumns |= 1 << ColumnOf((int) SixFretGuitarFret.White3);
-                }
-
-                // Truncate any active sustains this chord strikes into — a new sustain in a
-                // column replaces the older one rather than stacking onto it
-                for (int i = activeSustains.Count - 1; i >= 0; i--)
-                {
-                    var (_, fret, source) = activeSustains[i];
-                    if ((placedColumns & (1 << ColumnOf(fret))) == 0)
-                    {
-                        continue;
-                    }
-
-                    TruncateSustain(source, note.Tick);
-                    activeSustains.RemoveAt(i);
-                }
-
-                // Track this chord's sustains so later chords can truncate them
-                foreach (var (member, placedFret) in placedMembers)
-                {
-                    if (member.TickLength > 0)
-                    {
-                        activeSustains.Add((member.Tick + member.TickLength, placedFret, member));
-                    }
-                }
-
-                // Parent NoteMask: replace the fretted bits with the placed ones, keep open-like bits
-                int openBits = note.NoteMask & ~SIX_FRET_FRETS_MASK;
-                note.NoteMask = openBits | placedMask;
-            }
-
-            return converted;
-        }
-
-        /// <summary>
-        /// Returns a copy of a 6-fret difficulty with every note's pads color-flipped
-        /// (Black1↔White1, Black2↔White2, Black3↔White3). Used for lefty flip: the mirrored
-        /// highway physically swaps the two pad rows, so notes must swap rows with it.
-        /// Open and wildcard notes are unchanged.
-        /// </summary>
-        public static InstrumentDifficulty<GuitarNote> FlipSixFretColors(
-            this InstrumentDifficulty<GuitarNote> difficulty)
-        {
-            var flipped = new InstrumentDifficulty<GuitarNote>(difficulty);
-            foreach (var note in flipped.Notes)
-            {
-                int memberMaskUnion = 0;
-                foreach (var member in note.AllNotes)
-                {
-                    if (member.Fret is >= (int) SixFretGuitarFret.Black1 and <= (int) SixFretGuitarFret.White3)
-                    {
-                        member.Fret = (member.Fret - 1 + 3) % 6 + 1;
-                    }
-
-                    member.NoteMask = FlipSixFretColorBits(member.NoteMask);
-                    member.DisjointMask = FlipSixFretColorBits(member.DisjointMask);
-                    memberMaskUnion |= member.NoteMask;
-                }
-
-                // The parent's NoteMask is the union of its members' masks
-                note.NoteMask = memberMaskUnion;
-            }
-
-            return flipped;
-        }
-
-        /// <summary>Swaps the black-row bits (1-3) with the white-row bits (4-6), keeping open/wildcard bits.</summary>
-        static int FlipSixFretColorBits(int mask)
-        {
-            return ((mask & 0x38) >> 3) | ((mask & 0x07) << 3) | (mask & ~SIX_FRET_FRETS_MASK);
-        }
-
-        /// <summary>Masks for the six fretted 6-fret notes (Black1 through White3).</summary>
-        private const int SIX_FRET_FRETS_MASK = 0x3F;
-
-        /// <summary>Mask of all five fretted 5-fret notes (Green through Orange).</summary>
-        private const int FIVE_FRET_GRYBO_MASK = 0b11111;
-
-        /// <summary>
-        /// Substitutions for chord shapes whose direct mapping is undesirable, keyed by the
-        /// chord's 5-fret fret mask. Each entry maps 5-fret fret values to 6-fret fret values;
-        /// chords not listed here map 1:1. See Docs/5fret_to_6fret_conversion.md.
-        /// </summary>
-        private static readonly Dictionary<int, int[]> FiveFretToSixFretSubstitutions = new()
-        {
-            [ChordMask(FiveFretGuitarFret.Green, FiveFretGuitarFret.Red, FiveFretGuitarFret.Orange)] =
-                FretMap((FiveFretGuitarFret.Green, SixFretGuitarFret.Black1),
-                    (FiveFretGuitarFret.Red, SixFretGuitarFret.White1),
-                    (FiveFretGuitarFret.Orange, SixFretGuitarFret.White3)),
-            [ChordMask(FiveFretGuitarFret.Red, FiveFretGuitarFret.Blue, FiveFretGuitarFret.Orange)] =
-                FretMap((FiveFretGuitarFret.Red, SixFretGuitarFret.Black2),
-                    (FiveFretGuitarFret.Blue, SixFretGuitarFret.White2),
-                    (FiveFretGuitarFret.Orange, SixFretGuitarFret.White3)),
-            [ChordMask(FiveFretGuitarFret.Yellow, FiveFretGuitarFret.Blue, FiveFretGuitarFret.Orange)] =
-                FretMap((FiveFretGuitarFret.Yellow, SixFretGuitarFret.White1),
-                    (FiveFretGuitarFret.Blue, SixFretGuitarFret.White2),
-                    (FiveFretGuitarFret.Orange, SixFretGuitarFret.Black3)),
-            [ChordMask(FiveFretGuitarFret.Green, FiveFretGuitarFret.Red, FiveFretGuitarFret.Yellow, FiveFretGuitarFret.Orange)] =
-                FretMap((FiveFretGuitarFret.Green, SixFretGuitarFret.Black1),
-                    (FiveFretGuitarFret.Red, SixFretGuitarFret.White1),
-                    (FiveFretGuitarFret.Yellow, SixFretGuitarFret.Black2),
-                    (FiveFretGuitarFret.Orange, SixFretGuitarFret.White3)),
-            [ChordMask(FiveFretGuitarFret.Green, FiveFretGuitarFret.Red, FiveFretGuitarFret.Blue, FiveFretGuitarFret.Orange)] =
-                FretMap((FiveFretGuitarFret.Green, SixFretGuitarFret.Black1),
-                    (FiveFretGuitarFret.Red, SixFretGuitarFret.White1),
-                    (FiveFretGuitarFret.Blue, SixFretGuitarFret.Black3),
-                    (FiveFretGuitarFret.Orange, SixFretGuitarFret.White3)),
-            [ChordMask(FiveFretGuitarFret.Red, FiveFretGuitarFret.Yellow, FiveFretGuitarFret.Blue, FiveFretGuitarFret.Orange)] =
-                FretMap((FiveFretGuitarFret.Red, SixFretGuitarFret.Black1),
-                    (FiveFretGuitarFret.Yellow, SixFretGuitarFret.White1),
-                    (FiveFretGuitarFret.Blue, SixFretGuitarFret.White2),
-                    (FiveFretGuitarFret.Orange, SixFretGuitarFret.White3)),
-            [ChordMask(FiveFretGuitarFret.Green, FiveFretGuitarFret.Red, FiveFretGuitarFret.Yellow, FiveFretGuitarFret.Blue, FiveFretGuitarFret.Orange)] =
-                FretMap((FiveFretGuitarFret.Green, SixFretGuitarFret.Black1),
-                    (FiveFretGuitarFret.Red, SixFretGuitarFret.White1),
-                    (FiveFretGuitarFret.Yellow, SixFretGuitarFret.Black2),
-                    (FiveFretGuitarFret.Blue, SixFretGuitarFret.White2),
-                    (FiveFretGuitarFret.Orange, SixFretGuitarFret.Black3)),
-        };
-
         private static int ChordMask(params FiveFretGuitarFret[] frets)
         {
             int mask = 0;
@@ -217,12 +28,6 @@ namespace YARG.Core.Chart
             }
 
             return map;
-        }
-
-        /// <summary>Column index (0-2) of a fretted 6-fret value: Black1/White1 = 0, etc.</summary>
-        private static int ColumnOf(int fret)
-        {
-            return (fret - 1) % 3;
         }
 
         private static void TruncateSustain(GuitarNote note, uint tick)
@@ -249,17 +54,6 @@ namespace YARG.Core.Chart
                 {
                     subNote.ActivateGuitarFlag(GuitarNoteFlags.Disjoint);
                 }
-            }
-        }
-
-        private static void SetSixFret(GuitarNote member, int fret)
-        {
-            member.Fret = fret;
-            int mask = 1 << (fret - 1);
-            member.DisjointMask = (member.DisjointMask & ~SIX_FRET_FRETS_MASK) | mask;
-            if (member.IsChild)
-            {
-                member.NoteMask = (member.NoteMask & ~SIX_FRET_FRETS_MASK) | mask;
             }
         }
 
@@ -610,7 +404,7 @@ namespace YARG.Core.Chart
             shifts.RemoveRange(1, shifts.Count - 1);
         }
 
-        public static void ShuffleNotes(this InstrumentDifficulty<GuitarNote> difficulty, SyncTrack syncTrack, int seed)
+        public static void ShuffleNotes(this InstrumentDifficulty<GuitarNote> difficulty, SyncTrack syncTrack, int seed, bool shuffleInGroups)
         {
             // Quarter note
             uint maxIdenticalNoteTickDistance = syncTrack.Resolution;
@@ -621,7 +415,7 @@ namespace YARG.Core.Chart
             }
 
             var random = new Random(seed);
-            var activeNotes = new GuitarNote?[5 + 1]; // 5 frets, one open note
+            var activeNotes = new GuitarNote?[(int) FiveFretGuitarFret.Wildcard + 1]; // GRYBO + 6th fret on 6F + Open + Wildcard
 
             var currentNotes = new List<GuitarNote>();
             var availableFrets = new List<int>();
@@ -634,22 +428,27 @@ namespace YARG.Core.Chart
                 var parent = difficulty.Notes[noteIndex];
 
                 int identicalNoteCount = 0;
-                var previousNote = parent;
-                for (int i = noteIndex + 1; i < difficulty.Notes.Count; i++)
+                if (shuffleInGroups)
                 {
-                    var currentNote = difficulty.Notes[i];
-                    if (currentNote.NoteMask == parent.NoteMask &&
-                        currentNote.ChildNotes.Count == parent.ChildNotes.Count &&
-                        // ugh, uint overflow
-                        (previousNote.TickEnd > currentNote.Tick ||
-                            currentNote.Tick - previousNote.TickEnd <= maxIdenticalNoteTickDistance))
+                    var previousNote = parent;
+                    // Scan through the next notes to find how many are identical to this one, and if they are close enough.
+                    // If they are, we will shuffle them all the same way to avoid making something nightmarish to play
+                    for (int i = noteIndex + 1; i < difficulty.Notes.Count; i++)
                     {
-                        identicalNoteCount++;
-                        previousNote = currentNote;
-                    }
-                    else
-                    {
-                        break;
+                        var currentNote = difficulty.Notes[i];
+                        if (currentNote.NoteMask == parent.NoteMask &&
+                            currentNote.ChildNotes.Count == parent.ChildNotes.Count &&
+                            // ugh, uint overflow
+                            (previousNote.TickEnd > currentNote.Tick ||
+                                currentNote.Tick - previousNote.TickEnd <= maxIdenticalNoteTickDistance))
+                        {
+                            identicalNoteCount++;
+                            previousNote = currentNote;
+                        }
+                        else
+                        {
+                            break;
+                        }
                     }
                 }
 
@@ -753,7 +552,7 @@ namespace YARG.Core.Chart
                 parent.DisjointMask = 1 << (parent.Fret - 1);
                 lastShuffledMask = parent.NoteMask;
 
-                if (identicalNoteCount > 0)
+                if (shuffleInGroups && identicalNoteCount > 0)
                 {
                     for (int j = 1; j <= identicalNoteCount; j++)
                     {
@@ -765,7 +564,7 @@ namespace YARG.Core.Chart
                     noteIndex += identicalNoteCount;
                 }
 
-                if (parent.IsTrill)
+                if (shuffleInGroups && parent.IsTrill)
                 {
                     HandleTrillAfterShuffle();
                     // Second trill note, both lanes have now been handled
@@ -777,6 +576,15 @@ namespace YARG.Core.Chart
                         {
                             noteIndex++;
                         }
+                    }
+                }
+                // These will cause nothing but problems in true shuffle mode, so just strip them out
+                else if (!shuffleInGroups)
+                {
+                    const NoteFlags stripFlags = (NoteFlags.Trill | NoteFlags.Tremolo);
+                    foreach (var subNote in parent.AllNotes)
+                    {
+                        subNote.ClearFlag(stripFlags);
                     }
                 }
 
@@ -823,9 +631,9 @@ namespace YARG.Core.Chart
         public static void ConvertAllToFret(this InstrumentDifficulty<GuitarNote> difficulty, SyncTrack syncTrack,
             int fret)
         {
-            if (difficulty.Difficulty is Difficulty.Beginner && fret is (int) FiveFretGuitarFret.Wildcard)
+            if (difficulty.Difficulty is Difficulty.Beginner)
             {
-                // No point, Beginner is already all wildcards
+                // No point, Beginner is just easy + all wildcards. just use easy if you want to play a specific fret.
                 return;
             }
 
@@ -864,12 +672,13 @@ namespace YARG.Core.Chart
         public static void DoubleNotes(this InstrumentDifficulty<GuitarNote> difficulty, SyncTrack syncTrack)
         {
             // Fixed mapping for any chords that the default handling does weirdly
+            // ...yes, it's just one right now. blame its11
             Dictionary<int, int> chordMaskToAddedFret = new()
             {
                 [ChordMask(FiveFretGuitarFret.Green, FiveFretGuitarFret.Orange)] = (int) FiveFretGuitarFret.Blue,
             };
 
-            var activeNotes = new GuitarNote?[(int) FiveFretGuitarFret.Wildcard];
+            var activeNotes = new GuitarNote?[(int) FiveFretGuitarFret.Wildcard + 1]; // GRYBO + 6th fret on 6F + Open + Wildcard
 
             var sixteenthTick = syncTrack.Resolution / 4;
 
@@ -926,7 +735,6 @@ namespace YARG.Core.Chart
 
                 if (note.NoteMask == GuitarEngine.OPEN_MASK)
                 {
-                    // kinda sucks, but open chords are not really in the spirit of doubling
                     previousNote = note;
                     previousPlacedFret = null;
                     continue;
@@ -944,7 +752,8 @@ namespace YARG.Core.Chart
                 bool encounteredUsedFret = false;
                 bool avoidedFret = false;
                 int avoidedActiveSustain = -1;
-                for (int i = 1; i <= 5; i++)
+                // Loop through the frets and find a fret that is not used in the chord and does not have an active sustain on it
+                for (int i = (int) FiveFretGuitarFret.Green; i <= (int) FiveFretGuitarFret.Orange; i++)
                 {
                     if ((usedMask & (1 << (i - 1))) != 0)
                     {
@@ -982,17 +791,20 @@ namespace YARG.Core.Chart
                 {
                     if (avoidedFret)
                     {
+                        // No other option, just use the previous chord's fret
                         YargLogger.LogFormatTrace("Forced to place note at fret {0} on previous chord at time {1}",
                             previousPlacedFret, note.Time);
                         fret = previousPlacedFret!.Value;
                     }
                     else if (avoidedActiveSustain != -1)
                     {
+                        // No other option AND cannot use the previous chord's fret, so just use the active sustain's fret
                         YargLogger.LogFormatDebug("Forced to place note at fret {0} on active sustain at time {1}",
                             avoidedActiveSustain, note.Time);
                         fret = avoidedActiveSustain;
                         TruncateSustain(activeNotes[avoidedActiveSustain]!, note.Tick - sixteenthTick);
                     }
+                    // REALLY no option (5-note chord) - make it a 5-note open chord instead!
                 }
 
                 var newNote = AddFret(note, fret);
@@ -1076,32 +888,6 @@ namespace YARG.Core.Chart
 
                 return newNote;
             }
-        }
-
-        public static InstrumentDifficulty<TNote> Splice<TNote>(this InstrumentDifficulty<TNote> first,
-            InstrumentDifficulty<TNote> second, double time) where TNote : Note<TNote>
-        {
-            var originalNotes = first.Notes;
-            var newNotes = second.Notes;
-
-            var originalPhrases = first.Phrases;
-            var newPhrases = second.Phrases;
-
-            var originalTextEvents = first.TextEvents;
-            var newTextEvents = second.TextEvents;
-
-            // We don't actually care about the old range shifts, they just confuse things
-            var newRangeShiftEvents = second.RangeShiftEvents;
-
-            // Do the splicing, taking everything at or before time from first, everything after time from second
-            var combinedNotes = originalNotes.SpliceNotes(newNotes, time);
-            var combinedPhrases = originalPhrases.Splice(newPhrases, time);
-            var combinedTextEvents = originalTextEvents.Splice(newTextEvents, time);
-
-            var newId = new InstrumentDifficulty<TNote>(second.Instrument, second.Difficulty,
-                combinedNotes, combinedPhrases, combinedTextEvents, newRangeShiftEvents);
-
-            return newId;
         }
     }
 }
