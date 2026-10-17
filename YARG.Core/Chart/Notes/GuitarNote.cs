@@ -27,6 +27,7 @@ namespace YARG.Core.Chart
         // 4     | Orange             | White 2
         // 5     | (unused)           | White 3
         // 6     | Open               | Open
+        // 7     | Wildcard           | Wildcard
         // 7-31  | (all unused)       | (all unused)
         /// <summary>
         /// Bitmask of the fret, if a child note, or the entire chord, if a parent note.

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using YARG.Core.Engine.Guitar;
 using YARG.Core.Extensions;
 using YARG.Core.Logging;
@@ -489,11 +490,16 @@ namespace YARG.Core.Chart
 
                     currentNotes.Add(note);
                 }
-
-                for (int i = 1; i <= 5; i++)
+                if (availableFrets.Count - lastShuffledMask.CountBits() >= parent.ChildNotes.Count + 1)
                 {
-                    if ((lastShuffledMask & (1 << (i - 1))) != 0) availableFrets.Remove(i);
+                    // If removing the frets from the last shuffled mask would leave less than the number of child notes,
+                    // then we don't remove them.
+                    for (int i = 1; i <= 5; i++)
+                    {
+                        if ((lastShuffledMask & (1 << (i - 1))) != 0) availableFrets.Remove(i);
+                    }
                 }
+
 
                 // Pick a set of random notes for the chord
                 for (int i = selectedFrets.Count; i < currentNotes.Count; i++)
@@ -502,7 +508,7 @@ namespace YARG.Core.Chart
                     {
                         // Ignore un-shuffleable notes
                         var note = currentNotes[i];
-                        YargLogger.LogFormatWarning("Cannot shuffle note at {0:0.000} ({1}), removing.", note.Time,
+                        YargLogger.LogFormatTrace("Cannot shuffle note at {0:0.000} ({1}), removing.", note.Time,
                             note.Tick);
                         continue;
                     }
@@ -512,13 +518,13 @@ namespace YARG.Core.Chart
                 }
 
                 // Remove any notes that didn't make the cut
-                for (int i = 0; i < parent.ChildNotes.Count; i++)
-                {
-                    var child = parent.ChildNotes[i];
-                    if (!currentNotes.Contains(child) &&
-                        child.Fret != (int) FiveFretGuitarFret.Open) // Don't remove open notes
-                        parent.RemoveChildNote(child);
-                }
+                // for (int i = 0; i < parent.ChildNotes.Count; i++)
+                // {
+                //     var child = parent.ChildNotes[i];
+                //     if (!currentNotes.Contains(child) &&
+                //         child.Fret != (int) FiveFretGuitarFret.Open) // Don't remove open notes
+                //         parent.RemoveChildNote(child);
+                // }
 
                 // Skip open notes and 5-note chords
                 if (currentNotes.Count is < 1 or >= 5) continue;
@@ -548,6 +554,7 @@ namespace YARG.Core.Chart
                 }
 
                 // Fix the note mask to match the new frets, but keep the open/wildcard bits
+                // Bitmask on 5F is WC|Open|Unused|O|B|Y|R|G
                 parent.NoteMask = (parent.NoteMask & ~0b11111) | (newChordMask & 0b11111);
                 parent.DisjointMask = 1 << (parent.Fret - 1);
                 lastShuffledMask = parent.NoteMask;
@@ -559,6 +566,10 @@ namespace YARG.Core.Chart
                         var currentNote = difficulty.Notes[noteIndex + j];
                         // Copy everything from the parent note to the next note, except for the time/tick
                         CopyNoteFrets(parent, currentNote);
+                        foreach (var subNote in currentNote.AllNotes)
+                        {
+                            activeNotes[subNote.Fret] = subNote;
+                        }
                     }
 
                     noteIndex += identicalNoteCount;
@@ -761,7 +772,7 @@ namespace YARG.Core.Chart
                 int fret = (int) FiveFretGuitarFret.Open;
                 bool encounteredUsedFret = false;
                 bool avoidedFret = false;
-                int avoidedActiveSustain = -1;
+                var avoidedActiveSustains = new bool[6];
                 // Loop through the frets and find a fret that is not used in the chord and does not have an active sustain on it
                 for (int i = (int) FiveFretGuitarFret.Green; i <= (int) FiveFretGuitarFret.Orange; i++)
                 {
@@ -775,7 +786,7 @@ namespace YARG.Core.Chart
                     {
                         YargLogger.LogFormatTrace("Avoiding fret {0} at time {1} because of active sustain", i,
                             note.Time);
-                        avoidedActiveSustain = i;
+                        avoidedActiveSustains[i] = true;
                         continue;
                     }
 
@@ -799,18 +810,20 @@ namespace YARG.Core.Chart
 
                 if (fret is (int) FiveFretGuitarFret.Open)
                 {
-                    if (avoidedFret)
+                    if (avoidedFret && !avoidedActiveSustains[previousPlacedFret!.Value])
                     {
                         // No other option, just use the previous chord's fret
                         YargLogger.LogFormatTrace("Forced to place note at fret {0} on previous chord at time {1}",
                             previousPlacedFret, note.Time);
                         fret = previousPlacedFret!.Value;
                     }
-                    else if (avoidedActiveSustain != -1)
+                    else if (avoidedActiveSustains.Any())
                     {
+                        // Get the index of the last sustain in the list that has been avoided
+                        var avoidedActiveSustain = Array.LastIndexOf(avoidedActiveSustains, true);
                         // No other option AND cannot use the previous chord's fret, so just use the active sustain's fret
                         YargLogger.LogFormatDebug("Forced to place note at fret {0} on active sustain at time {1}",
-                            avoidedActiveSustain, note.Time);
+                            avoidedActiveSustains, note.Time);
                         fret = avoidedActiveSustain;
                         TruncateSustain(activeNotes[avoidedActiveSustain]!, note.Tick - sixteenthTick);
                     }
@@ -867,16 +880,17 @@ namespace YARG.Core.Chart
             GuitarNote AddFret(GuitarNote note, int fret)
             {
                 var currentNote = note;
-                uint tickEnd = note.TickEnd;
+                var tickEnd = note.TickEnd;
                 while (currentNote.NextNote is not null && currentNote.NextNote.Tick < tickEnd)
                 {
                     currentNote = currentNote.NextNote;
-                    if (currentNote.Fret != fret)
+                    // If the current note and the new fret don't share any bits, skip it
+                    if ((currentNote.NoteMask & (1 << (fret - 1))) == 0)
                     {
                         continue;
                     }
 
-                    tickEnd = currentNote.Tick - sixteenthTick;
+                    tickEnd = Math.Max(note.Tick, currentNote.Tick - sixteenthTick);
                     break;
                 }
 
