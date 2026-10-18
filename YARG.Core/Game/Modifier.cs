@@ -124,7 +124,9 @@ namespace YARG.Core.Game
                     Modifier.NoKicks      |
                     Modifier.NoDynamics   |
                     Modifier.AllWildcards |
-                    Modifier.OnlyKicks,
+                    Modifier.OnlyKicks    |
+                    Modifier.NoteShuffle  |
+                    Modifier.TrueNoteShuffle,
 
                 GameMode.Vocals =>
                     Modifier.UnpitchedOnly |

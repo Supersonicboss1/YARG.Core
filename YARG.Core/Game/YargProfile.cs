@@ -477,6 +477,15 @@ namespace YARG.Core.Game
                         drumsTrack.RemoveDynamics();
                     }
 
+                    if (IsModifierActive(Modifier.NoteShuffle))
+                    {
+                        drumsTrack.ShuffleNotes(syncTrack, unchecked(songHash.GetHashCode() * 133769420), true);
+                    }
+                    else if (IsModifierActive(Modifier.TrueNoteShuffle))
+                    {
+                        drumsTrack.ShuffleNotes(syncTrack, unchecked(songHash.GetHashCode() * 133769420), false);
+                    }
+
                     break;
                 case GameMode.ProKeys:
                     if (track is InstrumentDifficulty<ProKeysNote> proKeysTrack)
