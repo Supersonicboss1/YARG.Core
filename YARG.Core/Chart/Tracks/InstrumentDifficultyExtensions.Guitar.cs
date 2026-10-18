@@ -58,6 +58,68 @@ namespace YARG.Core.Chart
             }
         }
 
+        private static uint SafeTickBefore(uint tick, uint gap)
+        {
+            return tick > gap ? tick - gap : 0;
+        }
+
+        private static int GetLaneIndex(int fret, bool isSixFret)
+        {
+            return isSixFret ? (fret - 1) % 3 : fret;
+        }
+
+        private static int GetFretMaskOfLane(int fret, bool isSixFret, int maxFret)
+        {
+            if (!isSixFret)
+            {
+                return 1 << (fret - 1);
+            }
+
+            int mask = 0;
+            int lane = (fret - 1) % 3;
+            for (int i = 1; i <= maxFret; i++)
+            {
+                if ((i - 1) % 3 == lane)
+                {
+                    mask |= 1 << (i - 1);
+                }
+            }
+
+            return mask;
+        }
+
+        private static bool LaneHasActiveSustain(GuitarNote?[] activeNotes, int lane, bool isSixFret, int maxFret)
+        {
+            for (int i = 1; i <= maxFret; i++)
+            {
+                if (GetLaneIndex(i, isSixFret) == lane && activeNotes[i] is not null)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private static void TruncateLaneSustains(GuitarNote?[] activeNotes, int lane, bool isSixFret, int maxFret,
+            uint tick)
+        {
+            for (int i = 1; i <= maxFret; i++)
+            {
+                if (GetLaneIndex(i, isSixFret) != lane)
+                {
+                    continue;
+                }
+
+                var blocking = activeNotes[i];
+                if (blocking is not null)
+                {
+                    TruncateSustain(blocking, tick);
+                    activeNotes[i] = null;
+                }
+            }
+        }
+
         public static void ConvertToGuitarType(this InstrumentDifficulty<GuitarNote> difficulty, GuitarNoteType type)
         {
             foreach (var note in difficulty.Notes)
@@ -405,18 +467,26 @@ namespace YARG.Core.Chart
             shifts.RemoveRange(1, shifts.Count - 1);
         }
 
-        public static void ShuffleNotes(this InstrumentDifficulty<GuitarNote> difficulty, SyncTrack syncTrack, int seed, bool shuffleInGroups)
+        public static void ShuffleNotes(this InstrumentDifficulty<GuitarNote> difficulty, SyncTrack syncTrack, int seed,
+            bool shuffleInGroups, bool isSixFret)
         {
-            // Quarter note
-            uint maxIdenticalNoteTickDistance = syncTrack.Resolution;
             if (difficulty.Difficulty is Difficulty.Beginner)
             {
                 // Beginner is only wildcards. No.
                 return;
             }
 
+            // Quarter note
+            uint maxIdenticalNoteTickDistance = syncTrack.Resolution;
+
+            int maxFret = isSixFret ? 6 : 5;
+
+            const int minFret = 1;
+            const int buttonFretMask = 0b111111;
+
             var random = new Random(seed);
-            var activeNotes = new GuitarNote?[(int) FiveFretGuitarFret.Wildcard + 1]; // GRYBO + 6th fret on 6F + Open + Wildcard
+            var activeNotes =
+                new GuitarNote?[(int) FiveFretGuitarFret.Wildcard + 1]; // GRYBO + 6th fret on 6F + Open + Wildcard
 
             var currentNotes = new List<GuitarNote>();
             var availableFrets = new List<int>();
@@ -471,12 +541,15 @@ namespace YARG.Core.Chart
                     if (!isActive) activeNotes[i] = null;
                 }
 
-                // Set up grab bag
-                if (activeNotes[1] == null) availableFrets.Add(1);
-                if (activeNotes[2] == null) availableFrets.Add(2);
-                if (activeNotes[3] == null) availableFrets.Add(3);
-                if (activeNotes[4] == null) availableFrets.Add(4);
-                if (activeNotes[5] == null) availableFrets.Add(5);
+                // Set up grab bag. On 6-fret the two frets in a lane share a physical lane.
+                for (int i = minFret; i <= maxFret; i++)
+                {
+                    if (!LaneHasActiveSustain(activeNotes, GetLaneIndex(i, isSixFret), isSixFret, maxFret))
+                    {
+                        availableFrets.Add(i);
+                    }
+                }
+
                 availableFrets.Shuffle(random);
 
                 // Retrieve notes to shuffle
@@ -490,16 +563,63 @@ namespace YARG.Core.Chart
 
                     currentNotes.Add(note);
                 }
+
                 if (availableFrets.Count - lastShuffledMask.CountBits() >= parent.ChildNotes.Count + 1)
                 {
                     // If removing the frets from the last shuffled mask would leave less than the number of child notes,
                     // then we don't remove them.
-                    for (int i = 1; i <= 5; i++)
+                    for (int i = minFret; i <= maxFret; i++)
                     {
                         if ((lastShuffledMask & (1 << (i - 1))) != 0) availableFrets.Remove(i);
                     }
                 }
 
+                // On 6F we need to truncate sustains based on the entire lane.
+                if (isSixFret && availableFrets.Count < currentNotes.Count)
+                {
+                    var blockedLanes = new List<int>();
+                    for (int lane = 0; lane < 3; lane++)
+                    {
+                        if (LaneHasActiveSustain(activeNotes, lane, true, maxFret))
+                        {
+                            blockedLanes.Add(lane);
+                        }
+                    }
+
+                    blockedLanes.Shuffle(random);
+
+                    foreach (int lane in blockedLanes)
+                    {
+                        if (availableFrets.Count >= currentNotes.Count)
+                        {
+                            break;
+                        }
+
+                        for (int i = minFret; i <= maxFret; i++)
+                        {
+                            if (GetLaneIndex(i, true) != lane)
+                            {
+                                continue;
+                            }
+
+                            if (activeNotes[i] is not null)
+                            {
+                                YargLogger.LogFormatTrace(
+                                    "Truncating sustain on fret {0} at time {1} to shuffle 6-fret chord",
+                                    i, parent.Time);
+                                TruncateSustain(activeNotes[i]!, parent.Tick);
+                                activeNotes[i] = null;
+                            }
+
+                            if (!availableFrets.Contains(i))
+                            {
+                                availableFrets.Add(i);
+                            }
+                        }
+                    }
+
+                    availableFrets.Shuffle(random);
+                }
 
                 // Pick a set of random notes for the chord
                 for (int i = selectedFrets.Count; i < currentNotes.Count; i++)
@@ -517,17 +637,8 @@ namespace YARG.Core.Chart
                     selectedFrets.Add(randomFret);
                 }
 
-                // Remove any notes that didn't make the cut
-                // for (int i = 0; i < parent.ChildNotes.Count; i++)
-                // {
-                //     var child = parent.ChildNotes[i];
-                //     if (!currentNotes.Contains(child) &&
-                //         child.Fret != (int) FiveFretGuitarFret.Open) // Don't remove open notes
-                //         parent.RemoveChildNote(child);
-                // }
-
                 // Skip open notes and 5-note chords
-                if (currentNotes.Count is < 1 or >= 5) continue;
+                if (currentNotes.Count < 1 || currentNotes.Count >= maxFret) continue;
 
                 // Sort notes/frets to prepare for the next step
                 currentNotes.Sort((left, right) => left.Fret.CompareTo(right.Fret));
@@ -536,7 +647,7 @@ namespace YARG.Core.Chart
                 // Push all notes to the right, to prevent intermediate overlaps
                 for (int i = 0; i < currentNotes.Count; i++)
                 {
-                    currentNotes[^(i + 1)].Fret = 5 - i;
+                    currentNotes[^(i + 1)].Fret = maxFret - i;
                 }
 
                 // Apply shuffled frets
@@ -549,13 +660,19 @@ namespace YARG.Core.Chart
                     var note = currentNotes[i];
 
                     note.Fret = fret;
+                    note.DisjointMask = 1 << (fret - 1);
+                    if (note.IsChild)
+                    {
+                        note.NoteMask = 1 << (fret - 1);
+                    }
+
                     newChordMask |= 1 << (fret - 1);
                     activeNotes[fret] = note;
                 }
 
                 // Fix the note mask to match the new frets, but keep the open/wildcard bits
                 // Bitmask on 5F is WC|Open|Unused|O|B|Y|R|G
-                parent.NoteMask = (parent.NoteMask & ~0b11111) | (newChordMask & 0b11111);
+                parent.NoteMask = (parent.NoteMask & ~buttonFretMask) | (newChordMask & buttonFretMask);
                 parent.DisjointMask = 1 << (parent.Fret - 1);
                 lastShuffledMask = parent.NoteMask;
 
@@ -690,16 +807,24 @@ namespace YARG.Core.Chart
         }
 
         // Contrary to its name, this just adds one note to every chord
-        public static void DoubleNotes(this InstrumentDifficulty<GuitarNote> difficulty, SyncTrack syncTrack)
+        public static void DoubleNotes(this InstrumentDifficulty<GuitarNote> difficulty, SyncTrack syncTrack,
+            bool isSixFret)
         {
             // Fixed mapping for any chords that the default handling does weirdly
             // ...yes, it's just one right now. blame its11
-            Dictionary<int, int> chordMaskToAddedFret = new()
-            {
-                [ChordMask(FiveFretGuitarFret.Green, FiveFretGuitarFret.Orange)] = (int) FiveFretGuitarFret.Blue,
-            };
+            var chordMaskToAddedFret = isSixFret
+                ? new Dictionary<int, int>()
+                : new Dictionary<int, int>
+                {
+                    [ChordMask(FiveFretGuitarFret.Green, FiveFretGuitarFret.Orange)] = (int) FiveFretGuitarFret.Blue,
+                };
 
-            var activeNotes = new GuitarNote?[(int) FiveFretGuitarFret.Wildcard + 1]; // GRYBO + 6th fret on 6F + Open + Wildcard
+            int maxFret = isSixFret ? 6 : 5;
+            const int minFret = 1;               // Mostly for readability
+            const int buttonFretMask = 0b111111; // basically just NOT wildcard or open
+
+            var activeNotes =
+                new GuitarNote?[(int) FiveFretGuitarFret.Wildcard + 1]; // GRYBO + 6th fret on 6F + Open + Wildcard
 
             var sixteenthTick = syncTrack.Resolution / 4;
 
@@ -730,9 +855,14 @@ namespace YARG.Core.Chart
                     }
                 }
 
+                // Previous note was the same, apply the same chord and continue if its lane is free
+                bool previousLaneBlocked = previousPlacedFret is >= minFret &&
+                    previousPlacedFret.Value <= maxFret
+                        ? LaneHasActiveSustain(activeNotes, GetLaneIndex(previousPlacedFret.Value, isSixFret),
+                            isSixFret, maxFret)
+                        : previousPlacedFret is not null && activeNotes[previousPlacedFret.Value] is not null;
                 if (previousNote is not null && previousPlacedFret.HasValue &&
-                    previousNoteOriginalMask == note.NoteMask &&
-                    activeNotes[previousPlacedFret.Value] is null)
+                    previousNoteOriginalMask == note.NoteMask && !previousLaneBlocked)
                 {
                     // Previous note was the same, apply the same chord and continue
                     AddFret(note, previousPlacedFret.Value);
@@ -743,9 +873,9 @@ namespace YARG.Core.Chart
 
                 previousNoteOriginalMask = note.NoteMask;
 
-                // Fixed mapping for any chords that the default handling does weirdly, IF there is no active sustain on that fret
-                if (chordMaskToAddedFret.TryGetValue(note.NoteMask & 0b11111, out int addedFret) &&
-                    activeNotes[addedFret] == null)
+                // Fixed mapping for any chords that the default handling does weirdly IF there is no active sustain on that lane
+                if (chordMaskToAddedFret.TryGetValue(note.NoteMask & buttonFretMask, out int addedFret) &&
+                    !LaneHasActiveSustain(activeNotes, GetLaneIndex(addedFret, isSixFret), isSixFret, maxFret))
                 {
                     AddFret(note, addedFret);
                     previousNote = note;
@@ -772,9 +902,9 @@ namespace YARG.Core.Chart
                 int fret = (int) FiveFretGuitarFret.Open;
                 bool encounteredUsedFret = false;
                 bool avoidedFret = false;
-                var avoidedActiveSustains = new bool[6];
-                // Loop through the frets and find a fret that is not used in the chord and does not have an active sustain on it
-                for (int i = (int) FiveFretGuitarFret.Green; i <= (int) FiveFretGuitarFret.Orange; i++)
+                var avoidedActiveSustains = new bool[maxFret + 1];
+                // Loop through the frets and find a fret that is not used in the chord and does not have an active sustain on its lane
+                for (int i = minFret; i <= maxFret; i++)
                 {
                     if ((usedMask & (1 << (i - 1))) != 0)
                     {
@@ -782,7 +912,7 @@ namespace YARG.Core.Chart
                         continue;
                     }
 
-                    if (activeNotes[i] is not null)
+                    if (LaneHasActiveSustain(activeNotes, GetLaneIndex(i, isSixFret), isSixFret, maxFret))
                     {
                         YargLogger.LogFormatTrace("Avoiding fret {0} at time {1} because of active sustain", i,
                             note.Time);
@@ -810,24 +940,37 @@ namespace YARG.Core.Chart
 
                 if (fret is (int) FiveFretGuitarFret.Open)
                 {
-                    if (avoidedFret && !avoidedActiveSustains[previousPlacedFret!.Value])
+                    if (avoidedFret && previousPlacedFret!.Value >= minFret &&
+                        previousPlacedFret.Value <= maxFret &&
+                        (note.NoteMask & (1 << (previousPlacedFret.Value - 1))) == 0 &&
+                        !avoidedActiveSustains[previousPlacedFret.Value])
                     {
                         // No other option, just use the previous chord's fret
                         YargLogger.LogFormatTrace("Forced to place note at fret {0} on previous chord at time {1}",
                             previousPlacedFret, note.Time);
-                        fret = previousPlacedFret!.Value;
+                        fret = previousPlacedFret.Value;
                     }
-                    else if (avoidedActiveSustains.Any())
+                    else if (avoidedActiveSustains.Any(b => b))
                     {
                         // Get the index of the last sustain in the list that has been avoided
                         var avoidedActiveSustain = Array.LastIndexOf(avoidedActiveSustains, true);
-                        // No other option AND cannot use the previous chord's fret, so just use the active sustain's fret
-                        YargLogger.LogFormatDebug("Forced to place note at fret {0} on active sustain at time {1}",
-                            avoidedActiveSustains, note.Time);
+                        // No other option AND cannot use the previous chord's fret, so just use the active sustain's lane
+                        YargLogger.LogFormatTrace("Forced to place note at fret {0} on active sustain at time {1}",
+                            avoidedActiveSustain, note.Time);
                         fret = avoidedActiveSustain;
-                        TruncateSustain(activeNotes[avoidedActiveSustain]!, note.Tick - sixteenthTick);
+                        uint truncateTick = SafeTickBefore(note.Tick, sixteenthTick);
+                        if (isSixFret)
+                        {
+                            // A sustain blocks the whole lane, so truncate everything in it
+                            TruncateLaneSustains(activeNotes, GetLaneIndex(avoidedActiveSustain, true), true,
+                                maxFret, truncateTick);
+                        }
+                        else if (activeNotes[avoidedActiveSustain] is not null)
+                        {
+                            TruncateSustain(activeNotes[avoidedActiveSustain]!, truncateTick);
+                        }
                     }
-                    // REALLY no option (5-note chord) - make it a 5-note open chord instead!
+                    // REALLY no option (5/6-note chord) - make it an open chord instead!
                 }
 
                 var newNote = AddFret(note, fret);
@@ -881,16 +1024,19 @@ namespace YARG.Core.Chart
             {
                 var currentNote = note;
                 var tickEnd = note.TickEnd;
+                int laneBits = fret is (int) FiveFretGuitarFret.Open
+                    ? GuitarEngine.OPEN_MASK
+                    : GetFretMaskOfLane(fret, isSixFret, maxFret);
                 while (currentNote.NextNote is not null && currentNote.NextNote.Tick < tickEnd)
                 {
                     currentNote = currentNote.NextNote;
-                    // If the current note and the new fret don't share any bits, skip it
-                    if ((currentNote.NoteMask & (1 << (fret - 1))) == 0)
+                    // If the current note and the new lane don't share any bits, skip it
+                    if ((currentNote.NoteMask & laneBits) == 0)
                     {
                         continue;
                     }
 
-                    tickEnd = Math.Max(note.Tick, currentNote.Tick - sixteenthTick);
+                    tickEnd = Math.Max(note.Tick, SafeTickBefore(currentNote.Tick, sixteenthTick));
                     break;
                 }
 

@@ -403,7 +403,7 @@ namespace YARG.Core.Game
                     }
                     if (IsModifierActive(Modifier.DoubleNotes))
                     {
-                        guitarTrack.DoubleNotes(syncTrack);
+                        guitarTrack.DoubleNotes(syncTrack, GameMode is GameMode.SixFretGuitar);
                     }
                     if (IsModifierActive(Modifier.AllStrums))
                     {
@@ -442,11 +442,11 @@ namespace YARG.Core.Game
 
                     if (IsModifierActive(Modifier.NoteShuffle))
                     {
-                        guitarTrack.ShuffleNotes(syncTrack, unchecked(songHash.GetHashCode() * 133769420), true); // heh
+                        guitarTrack.ShuffleNotes(syncTrack, unchecked(songHash.GetHashCode() * 133769420), true, GameMode is GameMode.SixFretGuitar); // heh
                     }
                     else if (IsModifierActive(Modifier.TrueNoteShuffle))
                     {
-                        guitarTrack.ShuffleNotes(syncTrack, unchecked(songHash.GetHashCode() * 133769420), false);
+                        guitarTrack.ShuffleNotes(syncTrack, unchecked(songHash.GetHashCode() * 133769420), false, GameMode is GameMode.SixFretGuitar);
                     }
 
                     break;

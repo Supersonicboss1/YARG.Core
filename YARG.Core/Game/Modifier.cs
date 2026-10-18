@@ -112,9 +112,9 @@ namespace YARG.Core.Game
                     Modifier.AllTaps       |
                     Modifier.HoposToTaps   |
                     Modifier.TapsToHopos   |
-                    // Modifier.NoteShuffle   |
-                    // Modifier.TrueNoteShuffle |
-                    // Modifier.DoubleNotes   |
+                    Modifier.NoteShuffle   |
+                    Modifier.TrueNoteShuffle |
+                    Modifier.DoubleNotes   |
                     Modifier.AllWildcards  |
                     Modifier.AllOpens,
 
