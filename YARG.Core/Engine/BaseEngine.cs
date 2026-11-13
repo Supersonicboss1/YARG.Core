@@ -524,7 +524,6 @@ namespace YARG.Core.Engine
             snapshot.CurrentLaneIndex           = CurrentLaneIndex;
             snapshot.RequiredLaneNote           = RequiredLaneNote;
             snapshot.NextTrillNote              = NextTrillNote;
-            snapshot.LaneExpireTime             = LaneExpireTime;
 
             if (Solos.Count == 0)
             {
@@ -606,7 +605,6 @@ namespace YARG.Core.Engine
             CurrentLaneIndex           = snapshot.CurrentLaneIndex;
             RequiredLaneNote           = snapshot.RequiredLaneNote;
             NextTrillNote              = snapshot.NextTrillNote;
-            LaneExpireTime             = snapshot.LaneExpireTime;
 
             if (snapshot.SoloNotesHit != null && snapshot.SoloBonus != null)
             {
