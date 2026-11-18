@@ -8,13 +8,20 @@ namespace YARG.Core.Chart
 {
     public static partial class InstrumentDifficultyExtensions
     {
-        private static int ConstructDrumNoteMask(DrumNote note)
+        private static int ConstructDrumNoteMask(DrumNote note, bool ignoreKickAndWildcard)
         {
             int mask = 0;
             foreach (var subNote in note.AllNotes)
             {
+                if (ignoreKickAndWildcard &&
+                    subNote.Pad is (int) FourLaneDrumPad.Kick or (int) FourLaneDrumPad.Wildcard)
+                {
+                    continue;
+                }
+
                 mask |= 1 << subNote.Pad;
             }
+
             return mask;
         }
 
@@ -22,16 +29,16 @@ namespace YARG.Core.Chart
         {
             return pad switch
             {
-                FourLaneDrumPad.Kick         => 0,
-                FourLaneDrumPad.RedDrum      => 1,
-                FourLaneDrumPad.YellowDrum   => 2,
-                FourLaneDrumPad.BlueDrum     => 3,
-                FourLaneDrumPad.GreenDrum    => 4,
-                FourLaneDrumPad.YellowCymbal => 2,
-                FourLaneDrumPad.BlueCymbal   => 3,
-                FourLaneDrumPad.GreenCymbal  => 4,
-                FourLaneDrumPad.Wildcard     => 5,
-                _                            => throw new ArgumentOutOfRangeException(nameof(pad), pad, null)
+                FourLaneDrumPad.Kick    => 0,
+                FourLaneDrumPad.RedDrum => 1,
+                FourLaneDrumPad.YellowDrum
+                    or FourLaneDrumPad.YellowCymbal => 2,
+                FourLaneDrumPad.BlueDrum
+                    or FourLaneDrumPad.BlueCymbal => 3,
+                FourLaneDrumPad.GreenDrum
+                    or FourLaneDrumPad.GreenCymbal => 4,
+                FourLaneDrumPad.Wildcard => -1,
+                _                        => throw new ArgumentOutOfRangeException(nameof(pad), pad, null)
             };
         }
 
@@ -45,7 +52,7 @@ namespace YARG.Core.Chart
                 FiveLaneDrumPad.Blue     => 3,
                 FiveLaneDrumPad.Orange   => 4,
                 FiveLaneDrumPad.Green    => 5,
-                FiveLaneDrumPad.Wildcard => 6,
+                FiveLaneDrumPad.Wildcard => -1,
                 _                        => throw new ArgumentOutOfRangeException(nameof(pad), pad, null)
             };
         }
@@ -110,6 +117,7 @@ namespace YARG.Core.Chart
                 // No point, Beginner is already all wildcards
                 return;
             }
+
             bool laneActive = false;
             foreach (var note in difficulty.Notes)
             {
@@ -154,7 +162,6 @@ namespace YARG.Core.Chart
             }
         }
 
-
         public static void RemoveDynamics(this InstrumentDifficulty<DrumNote> difficulty)
         {
             foreach (var i in difficulty.Notes)
@@ -172,6 +179,7 @@ namespace YARG.Core.Chart
             {
                 return;
             }
+
             if (pads.Length == 0)
             {
                 return;
@@ -331,19 +339,9 @@ namespace YARG.Core.Chart
                 return;
             }
 
-            bool isFiveLane = difficulty.Instrument switch
-            {
-                Instrument.FiveLaneDrums => true,
-                _ => false,
-            };
-
-            // Build the pool of shufflable hand pads for this mode.
-            // Kick (0) and Wildcard (9) are never shuffled.
-            // 4-lane non-pro uses drums only; pro includes cymbals (which share lanes with drums).
-            // 5-lane uses its own distinct set. This keeps the 4L/Pro and 5L separations intact.
             List<int> basePool;
             Func<int, int> getLane;
-            if (isFiveLane)
+            if (difficulty.Instrument is Instrument.FiveLaneDrums)
             {
                 basePool = new List<int>
                 {
@@ -357,8 +355,8 @@ namespace YARG.Core.Chart
             }
             else
             {
-                bool isPro = difficulty.Instrument == Instrument.ProDrums || ChartContainsFourLaneCymbal(difficulty);
-                if (isPro)
+                // What to do about elite drums...?
+                if (difficulty.Instrument is Instrument.ProDrums)
                 {
                     basePool = new List<int>
                     {
@@ -381,11 +379,9 @@ namespace YARG.Core.Chart
                         (int) FourLaneDrumPad.GreenDrum,
                     };
                 }
+
                 getLane = pad => GetDrumLaneIndex((FourLaneDrumPad) pad);
             }
-
-            const int kickPad = (int) FourLaneDrumPad.Kick; // 0 in both 4L and 5L
-            const int wildcardPad = (int) FourLaneDrumPad.Wildcard; // 9 in both
 
             // Quarter note
             uint maxIdenticalNoteTickDistance = syncTrack.Resolution;
@@ -407,10 +403,22 @@ namespace YARG.Core.Chart
                     var previousNote = parent;
                     // Scan through the next notes to find how many are identical to this one, and if they are close enough.
                     // If they are, we will shuffle them all the same way to avoid making something nightmarish to play
+                    // (I mean, this is drums note shuffle, so it's already not fun lol)
                     for (int i = noteIndex + 1; i < difficulty.Notes.Count; i++)
                     {
                         var currentNote = difficulty.Notes[i];
-                        if (ConstructDrumNoteMask(currentNote) == ConstructDrumNoteMask(parent) &&
+                        if (currentNote.Pad is (int) FourLaneDrumPad.Kick or (int) FourLaneDrumPad.Wildcard)
+                        {
+                            // They will be skipped when copying too, but it needs to still know the length to loop over
+                            if (identicalNoteCount > 0)
+                            {
+                                identicalNoteCount++;
+                            }
+
+                            continue;
+                        }
+
+                        if (ConstructDrumNoteMask(currentNote, true) == ConstructDrumNoteMask(parent, true) &&
                             currentNote.ChildNotes.Count == parent.ChildNotes.Count &&
                             // ugh, uint overflow
                             (previousNote.TickEnd > currentNote.Tick ||
@@ -432,11 +440,9 @@ namespace YARG.Core.Chart
                 selectedPads.Clear();
                 availablePads.Clear();
 
-                // Retrieve hand notes to shuffle. Kicks, wildcards, and pads from the
-                // other drums mode are left fixed. Drums have no sustains to worry about.
                 foreach (var note in parent.AllNotes)
                 {
-                    if (note.Pad == kickPad || note.Pad == wildcardPad)
+                    if (note.Pad is (int) FourLaneDrumPad.Kick or (int) FourLaneDrumPad.Wildcard)
                     {
                         continue;
                     }
@@ -451,7 +457,7 @@ namespace YARG.Core.Chart
 
                 if (currentNotes.Count == 0)
                 {
-                    // Kick-only, wildcard-only, or otherwise unshufflable. Leave fixed.
+                    // likely just a kick note, ignore
                     continue;
                 }
 
@@ -471,9 +477,7 @@ namespace YARG.Core.Chart
                     }
                 }
 
-                // Pick a set of random pads for the chord. On pro drums a drum and its
-                // same-colour cymbal share a lane, so once a pad is picked the rest of
-                // its lane is removed to prevent e.g. BlueDrum + BlueCymbal together.
+                // once a pad is picked the lane is removed to prevent tom+cymbal "chords" on the same lane.
                 for (int i = 0; i < currentNotes.Count; i++)
                 {
                     if (availablePads.Count < 1)
@@ -496,14 +500,13 @@ namespace YARG.Core.Chart
 
                 if (selectedPads.Count != currentNotes.Count)
                 {
-                    // Not enough distinct lanes for this chord (shouldn't happen on valid
-                    // charts). Leave the chord as-is rather than producing garbage.
-                    YargLogger.LogFormatTrace("Cannot shuffle note at {0:0.000} ({1}), leaving as-is.",
+                    // Really this should not be possible, unless I screwed up the logic
+                    YargLogger.LogFormatWarning("Cannot shuffle note at {0:0.000} ({1})",
                         parent.Time, parent.Tick);
                     continue;
                 }
 
-                // Sort notes/pads by lane to preserve the chord shape (low to high)
+                // Sort by lane to preserve the general lane order, if that matters?
                 currentNotes.Sort((left, right) =>
                 {
                     int laneComparison = getLane(left.Pad).CompareTo(getLane(right.Pad));
@@ -515,18 +518,18 @@ namespace YARG.Core.Chart
                     return laneComparison != 0 ? laneComparison : left.CompareTo(right);
                 });
 
-                // Apply shuffled pads directly. Intermediate duplicates don't matter here
-                // since Pad has no uniqueness validation on set (matching ConvertAllToPad).
                 for (int i = 0; i < currentNotes.Count; i++)
                 {
                     currentNotes[i].Pad = selectedPads[i];
                 }
 
+                // This is lifted from the guitar code, and it's a little hacky since drums does not have chord masks
                 int newChordMask = 0;
                 foreach (int pad in selectedPads)
                 {
                     newChordMask |= 1 << pad;
                 }
+
                 lastShuffledMask = newChordMask;
 
                 if (shuffleInGroups && identicalNoteCount > 0)
@@ -534,7 +537,11 @@ namespace YARG.Core.Chart
                     for (int j = 1; j <= identicalNoteCount; j++)
                     {
                         var currentNote = difficulty.Notes[noteIndex + j];
-                        // Copy everything from the parent chord to the next chord, except for the time/tick
+                        if (currentNote.Pad is (int) FourLaneDrumPad.Kick or (int) FourLaneDrumPad.Wildcard)
+                        {
+                            continue;
+                        }
+
                         CopyNotePads(parent, currentNote);
                     }
 
@@ -597,23 +604,5 @@ namespace YARG.Core.Chart
                 }
             }
         }
-
-        private static bool ChartContainsFourLaneCymbal(InstrumentDifficulty<DrumNote> difficulty)
-        {
-            foreach (var note in difficulty.Notes)
-            {
-                foreach (var subNote in note.AllNotes)
-                {
-                    if (subNote.Pad is (int) FourLaneDrumPad.YellowCymbal or (int) FourLaneDrumPad.BlueCymbal
-                        or (int) FourLaneDrumPad.GreenCymbal)
-                    {
-                        return true;
-                    }
-                }
-            }
-
-            return false;
-        }
-
     }
 }
